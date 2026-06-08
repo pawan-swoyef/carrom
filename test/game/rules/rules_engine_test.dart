@@ -172,4 +172,42 @@ void main() {
       expect(s, same(finished));
     });
   });
+
+  group('end-to-end scenario', () {
+    test('player one sweeps to a legal win', () {
+      var s = MatchState.initial(); // p1 white, p2 black
+
+      // P1 pockets 7 white across continued strikes.
+      for (var i = 0; i < 7; i++) {
+        s = engine.resolve(s, const StrikeOutcome(pocketed: [CoinType.white]));
+        expect(s.currentPlayer, Player.one);
+      }
+      expect(s.whiteRemaining, 2);
+
+      // P1 pockets the queen alone -> cover pending, still P1.
+      s = engine.resolve(s, const StrikeOutcome(pocketed: [CoinType.queen]));
+      expect(s.queenCoverPending, true);
+      expect(s.currentPlayer, Player.one);
+
+      // P1 covers with a white -> secured, 1 white left, still P1.
+      s = engine.resolve(s, const StrikeOutcome(pocketed: [CoinType.white]));
+      expect(s.queenCoverPending, false);
+      expect(s.queenOnBoard, false);
+      expect(s.whiteRemaining, 1);
+
+      // P1 pockets the last white with the queen resolved -> win.
+      s = engine.resolve(s, const StrikeOutcome(pocketed: [CoinType.white]));
+      expect(s.winner, Player.one);
+      expect(s.isGameOver, true);
+    });
+
+    test('miss then opponent takes over', () {
+      var s = MatchState.initial();
+      s = engine.resolve(s, const StrikeOutcome()); // p1 misses
+      expect(s.currentPlayer, Player.two);
+      s = engine.resolve(s, const StrikeOutcome(pocketed: [CoinType.black]));
+      expect(s.currentPlayer, Player.two); // own coin -> continue
+      expect(s.blackRemaining, 8);
+    });
+  });
 }
