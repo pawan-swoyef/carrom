@@ -79,6 +79,9 @@ class RulesEngine {
         );
       }
       returnOne(myColor);
+      // Defensive: reaching count==0 requires pocketing your own last coin this
+      // strike, which already resolves any pending cover above, so coverPending
+      // is effectively always false here. Kept as belt-and-suspenders.
       if (coverPending) {
         queenOnBoard = true;
         coverPending = false;

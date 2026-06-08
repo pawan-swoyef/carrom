@@ -76,6 +76,18 @@ void main() {
       expect(s.currentPlayer, Player.two);
       expect(s.whiteRemaining, 9);
     });
+
+    test('foul pocketing own coin with coins banked: restore + one penalty', () {
+      // 2 white already banked (7 remaining); foul also pockets a white.
+      final banked = start().copyWith(whiteRemaining: 7);
+      final s = engine.resolve(
+        banked,
+        const StrikeOutcome(pocketed: [CoinType.white], strikerPocketed: true),
+      );
+      // This-strike white returns (7 remaining), then one banked penalty -> 8.
+      expect(s.whiteRemaining, 8);
+      expect(s.currentPlayer, Player.two);
+    });
   });
 
   group('queen cover', () {
@@ -129,6 +141,40 @@ void main() {
       expect(s.queenOnBoard, true);
       expect(s.queenCoverPending, false);
       expect(s.currentPlayer, Player.two);
+    });
+
+    test('pending cover fails when only an opponent coin is pocketed', () {
+      final pending = start().copyWith(queenOnBoard: false, queenCoverPending: true);
+      final s = engine.resolve(
+        pending,
+        const StrikeOutcome(pocketed: [CoinType.black]),
+      );
+      expect(s.queenOnBoard, true); // cover failed -> queen returns
+      expect(s.queenCoverPending, false);
+      expect(s.currentPlayer, Player.two); // no own coin -> turn passes
+      expect(s.blackRemaining, 8); // opponent still credited
+    });
+  });
+
+  group('color asymmetry (player two acts)', () {
+    test('player two pocketing their own black coin strikes again', () {
+      // Player two owns black; make it their turn.
+      final s = engine.resolve(
+        MatchState.initial().copyWith(currentPlayer: Player.two),
+        const StrikeOutcome(pocketed: [CoinType.black]),
+      );
+      expect(s.currentPlayer, Player.two); // own color -> continue
+      expect(s.blackRemaining, 8);
+      expect(s.whiteRemaining, 9);
+    });
+
+    test('player two foul penalty returns a banked black coin', () {
+      final banked = MatchState.initial()
+          .copyWith(currentPlayer: Player.two, blackRemaining: 8);
+      final s = engine.resolve(banked, const StrikeOutcome(strikerPocketed: true));
+      expect(s.currentPlayer, Player.one); // turn passes
+      expect(s.blackRemaining, 9); // banked black returned, not white
+      expect(s.whiteRemaining, 9);
     });
   });
 

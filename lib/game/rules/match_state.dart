@@ -42,6 +42,9 @@ class MatchState {
 
   int remainingFor(Player p) => remainingOfColor(colorOf(p));
 
+  /// Note: [winner] cannot be cleared back to null here (a finished match never
+  /// un-finishes). To start a fresh match, use [MatchState.initial], not
+  /// `copyWith(winner: null)` which silently no-ops.
   MatchState copyWith({
     Player? currentPlayer,
     CoinType? playerOneColor,
