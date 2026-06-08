@@ -1,0 +1,45 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:carrom_pro/services/storage_service.dart';
+import 'package:carrom_pro/settings/settings_controller.dart';
+import 'package:carrom_pro/screens/main_menu_screen.dart';
+import 'package:carrom_pro/navigation/home_shell.dart';
+
+Future<Widget> _menuApp() async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = await StorageService.create();
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider(create: (_) => SettingsController(storage)),
+    ],
+    child: const MaterialApp(home: MainMenuScreen()),
+  );
+}
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('main menu shows title and PLAY', (tester) async {
+    await tester.pumpWidget(await _menuApp());
+    expect(find.text('Carrom Pro'), findsOneWidget);
+    expect(find.text('PLAY'), findsOneWidget);
+  });
+
+  testWidgets('tapping PLAY navigates to HomeShell', (tester) async {
+    await tester.pumpWidget(await _menuApp());
+    await tester.tap(find.text('PLAY'));
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeShell), findsOneWidget);
+    expect(find.text('Shop'), findsOneWidget); // bottom-nav label
+  });
+
+  testWidgets('sound toggle flips icon', (tester) async {
+    await tester.pumpWidget(await _menuApp());
+    expect(find.byIcon(Icons.volume_up), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.volume_up));
+    await tester.pump();
+    expect(find.byIcon(Icons.volume_off), findsOneWidget);
+  });
+}
