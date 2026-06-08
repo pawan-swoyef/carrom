@@ -38,6 +38,7 @@ dependencies:
   provider: ^6.1.5+1
   flame: ^1.37.0
   flame_forge2d: ^0.19.2+6
+  vector_math: ^2.1.4
 
 dev_dependencies:
   flutter_test:
