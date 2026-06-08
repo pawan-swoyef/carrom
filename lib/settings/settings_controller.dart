@@ -18,6 +18,8 @@ class SettingsController extends ChangeNotifier {
 
   Settings get settings => _settings;
 
+  /// Reads all settings from storage into [_settings]. Called once during
+  /// construction, before any listener is attached, so it does not notify.
   void _load() {
     _settings = Settings(
       soundEffects: _storage.getBool(_kSound, defaultValue: true),
@@ -28,7 +30,6 @@ class SettingsController extends ChangeNotifier {
         defaultValue: Difficulty.medium.index,
       )],
     );
-    notifyListeners();
   }
 
   Future<void> setSoundEffects(bool value) async {
