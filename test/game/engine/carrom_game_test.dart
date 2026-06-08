@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flame/game.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:carrom_pro/game/engine/carrom_game.dart';
@@ -54,5 +56,97 @@ void main() {
     }
     final result = game.takeStrikeResult();
     expect(result.strikerPocketed, true);
+  });
+
+  // ── Control API tests ──────────────────────────────────────────────────────
+
+  testWidgets('isSettled is true right after load (all pieces at rest)',
+      (tester) async {
+    final game = await _loaded(tester);
+    expect(game.isSettled, isTrue);
+  });
+
+  testWidgets('setStrikerX clamps to board limits', (tester) async {
+    final game = await _loaded(tester);
+    final geo = game.geometry;
+
+    // Move beyond the max limit.
+    game.setStrikerX(999);
+    expect(
+      game.striker.body.position.x,
+      closeTo(geo.strikerMaxX, 0.001),
+    );
+
+    // Move beyond the min limit.
+    game.setStrikerX(-999);
+    expect(
+      game.striker.body.position.x,
+      closeTo(geo.strikerMinX, 0.001),
+    );
+
+    // Valid position in the middle.
+    game.setStrikerX(0);
+    expect(game.striker.body.position.x, closeTo(0.0, 0.001));
+    expect(
+      game.striker.body.position.y,
+      closeTo(geo.baselineY, 0.001),
+    );
+  });
+
+  testWidgets('setStrikerX does nothing when board is not settled',
+      (tester) async {
+    final game = await _loaded(tester);
+
+    // Give the striker some velocity so it is NOT settled.
+    game.striker.body.linearVelocity.setValues(5, 5);
+    expect(game.isSettled, isFalse);
+
+    final xBefore = game.striker.body.position.x;
+    game.setStrikerX(0); // should be ignored
+    expect(game.striker.body.position.x, closeTo(xBefore, 0.001));
+  });
+
+  testWidgets('launch gives striker non-zero velocity immediately',
+      (tester) async {
+    final game = await _loaded(tester);
+
+    // Full-power straight-up launch.
+    game.launch(angleRadians: math.pi / 2, power: 1.0);
+    expect(game.striker.body.linearVelocity.length, greaterThan(0));
+  });
+
+  testWidgets('launch is ignored when board is not settled', (tester) async {
+    final game = await _loaded(tester);
+
+    // Give a coin some velocity.
+    game.coins.first.body.linearVelocity.setValues(5, 5);
+    expect(game.isSettled, isFalse);
+
+    // Striker velocity should remain zero.
+    game.launch(angleRadians: math.pi / 2, power: 1.0);
+    expect(game.striker.body.linearVelocity.length, closeTo(0, 0.001));
+  });
+
+  testWidgets('resetBoard restores 19 coins and a fresh striker', (tester) async {
+    final game = await _loaded(tester);
+
+    // Pocket a coin manually.
+    final coin = game.coins.first;
+    final pocketCenter = game.pockets.first.body.position.clone();
+    coin.body.setTransform(pocketCenter, 0);
+    for (var i = 0; i < 10; i++) {
+      game.update(1 / 60);
+    }
+    expect(game.coins.length, lessThan(19));
+
+    // Reset.
+    await game.resetBoard();
+    // Allow the async adds to complete.
+    await tester.pump();
+    await tester.pump();
+
+    expect(game.coins.length, 19);
+    expect(game.striker, isA<StrikerBody>());
+    expect(game.isSettled, isTrue);
   });
 }

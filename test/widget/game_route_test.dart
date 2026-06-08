@@ -25,7 +25,10 @@ void main() {
     ));
 
     await tester.tap(find.text('Practice'));
-    await tester.pumpAndSettle();
+    // Use timed pumps instead of pumpAndSettle: GameWidget runs a continuous
+    // game loop that never idles, so pumpAndSettle would time out.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // route animation
     expect(find.byType(GameScreen), findsOneWidget);
   });
 }

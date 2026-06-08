@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flame_forge2d/flame_forge2d.dart';
 
 import '../../board/board_geometry.dart';
@@ -13,6 +15,8 @@ class PocketBody extends BodyComponent<CarromGame> with ContactCallbacks {
   final BoardGeometry geometry;
   final Vector2 pocketCenter;
 
+  static const _pocketColor = Color(0xFF0D0A08); // near-black hole
+
   @override
   Body createBody() {
     final shape = CircleShape()..radius = geometry.pocketRadius;
@@ -23,6 +27,15 @@ class PocketBody extends BodyComponent<CarromGame> with ContactCallbacks {
       userData: this,
     );
     return world.createBody(bodyDef)..createFixture(fixtureDef);
+  }
+
+  @override
+  void render(Canvas canvas) {
+    canvas.drawCircle(
+      Offset.zero,
+      geometry.pocketRadius,
+      Paint()..color = _pocketColor,
+    );
   }
 
   @override

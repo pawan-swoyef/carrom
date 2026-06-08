@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flame_forge2d/flame_forge2d.dart';
 
 import '../../board/board_geometry.dart';
@@ -11,6 +13,10 @@ class StrikerBody extends BodyComponent {
 
   /// Set once the striker has been pocketed; guards against double-capture.
   bool captured = false;
+
+  static const _fillColor = Color(0xFFF5C1A0);   // warm peach/cream
+  static const _ringColor = Color(0xFFD4915A);   // darker ring
+  static const _innerColor = Color(0xFFFBE8D8);  // highlight
 
   @override
   Body createBody() {
@@ -29,5 +35,26 @@ class StrikerBody extends BodyComponent {
       userData: this,
     );
     return world.createBody(bodyDef)..createFixture(fixtureDef);
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final r = geometry.strikerRadius;
+
+    // Outer filled circle.
+    canvas.drawCircle(Offset.zero, r, Paint()..color = _fillColor);
+
+    // Decorative ring.
+    canvas.drawCircle(
+      Offset.zero,
+      r * 0.75,
+      Paint()
+        ..color = _ringColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * 0.15,
+    );
+
+    // Inner highlight dot.
+    canvas.drawCircle(Offset.zero, r * 0.28, Paint()..color = _innerColor);
   }
 }
