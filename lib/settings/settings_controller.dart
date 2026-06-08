@@ -25,11 +25,19 @@ class SettingsController extends ChangeNotifier {
       soundEffects: _storage.getBool(_kSound, defaultValue: true),
       music: _storage.getBool(_kMusic, defaultValue: true),
       vibration: _storage.getBool(_kVibration, defaultValue: true),
-      defaultDifficulty: Difficulty.values[_storage.getInt(
-        _kDifficulty,
-        defaultValue: Difficulty.medium.index,
-      )],
+      defaultDifficulty: _difficultyFromIndex(
+        _storage.getInt(_kDifficulty, defaultValue: Difficulty.medium.index),
+      ),
     );
+  }
+
+  /// Maps a stored index back to a [Difficulty], falling back to medium if the
+  /// index is out of range (e.g. stale data after the enum changes).
+  static Difficulty _difficultyFromIndex(int index) {
+    if (index < 0 || index >= Difficulty.values.length) {
+      return Difficulty.medium;
+    }
+    return Difficulty.values[index];
   }
 
   Future<void> setSoundEffects(bool value) async {

@@ -39,4 +39,11 @@ void main() {
     final reloaded = SettingsController(await StorageService.create());
     expect(reloaded.settings.defaultDifficulty, Difficulty.hard);
   });
+
+  test('falls back to medium when stored difficulty index is out of range',
+      () async {
+    SharedPreferences.setMockInitialValues({'settings.defaultDifficulty': 99});
+    final controller = SettingsController(await StorageService.create());
+    expect(controller.settings.defaultDifficulty, Difficulty.medium);
+  });
 }
