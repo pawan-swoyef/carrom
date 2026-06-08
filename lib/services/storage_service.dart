@@ -28,10 +28,17 @@ class StorageService {
   Future<void> setString(String key, String value) =>
       _prefs.setString(key, value);
 
+  /// Returns the decoded JSON object for [key], or null if the key is missing
+  /// or the stored value is not a valid JSON object (e.g. corrupted data).
   Map<String, dynamic>? getJson(String key) {
     final raw = _prefs.getString(key);
     if (raw == null) return null;
-    return jsonDecode(raw) as Map<String, dynamic>;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<void> setJson(String key, Map<String, dynamic> value) =>

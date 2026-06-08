@@ -26,6 +26,18 @@ void main() {
     expect(storage.getInt('coins', defaultValue: 100), 100);
   });
 
+  test('setInt then getInt round-trips', () async {
+    final storage = await freshStorage();
+    await storage.setInt('coins', 250);
+    expect(storage.getInt('coins'), 250);
+  });
+
+  test('setString then getString round-trips', () async {
+    final storage = await freshStorage();
+    await storage.setString('name', 'Alex Pro');
+    expect(storage.getString('name'), 'Alex Pro');
+  });
+
   test('setJson then getJson round-trips a map', () async {
     final storage = await freshStorage();
     await storage.setJson('inv', {'owned': ['a', 'b'], 'equipped': 'a'});
@@ -37,5 +49,11 @@ void main() {
   test('getJson returns null when key missing', () async {
     final storage = await freshStorage();
     expect(storage.getJson('nope'), isNull);
+  });
+
+  test('getJson returns null on corrupted (non-object) data', () async {
+    final storage = await freshStorage();
+    await storage.setString('inv', 'not json at all');
+    expect(storage.getJson('inv'), isNull);
   });
 }
