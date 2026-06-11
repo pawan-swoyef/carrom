@@ -12,6 +12,7 @@ import 'bodies/pocket_body.dart';
 import 'bodies/striker_body.dart';
 import 'bodies/wall_body.dart';
 import 'strike_result.dart';
+import 'striker_drag_input.dart';
 
 /// The Forge2D physics world for a carrom board: static rails, four corner
 /// pocket sensors, 19 coins (9 white, 9 black, queen) and the striker. Pocket
@@ -39,6 +40,10 @@ class CarromGame extends Forge2DGame {
   final List<BodyComponent> _toCapture = [];
 
   static const _settle = SettleDetector();
+
+  // Aim-line overlay — kept as a field so we can call setAim() from the drag
+  // input's callbacks without a separate lookup.
+  late final AimLineOverlay _aimLine;
 
   // ──────────────────────────────────────────────────────────────────
   // Control API
@@ -118,6 +123,35 @@ class CarromGame extends Forge2DGame {
     }
 
     await _placePieces();
+
+    // ── Drag-to-strike input ─────────────────────────────────────────
+    // AimLineOverlay lives in the viewfinder so it renders in world space.
+    _aimLine = AimLineOverlay();
+    await camera.viewfinder.add(_aimLine);
+
+    // StrikerDragInput lives in the viewport (screen space) so it covers the
+    // full canvas and receives touch events before world components do.
+    await camera.viewport.add(
+      StrikerDragInput(
+        onUpdateAim: (fingerWorld, isAiming) {
+          if (fingerWorld == null || !isAiming) {
+            _aimLine.setAim(visible: false);
+          } else {
+            final sp = _striker?.body.position;
+            if (sp != null) {
+              _aimLine.setAim(
+                visible: true,
+                from: Vector2(sp.x, sp.y),
+                to: fingerWorld,
+              );
+            }
+          }
+        },
+        onRelease: (angleRadians, power) {
+          launch(angleRadians: angleRadians, power: power);
+        },
+      ),
+    );
   }
 
   /// Places 19 coins + a fresh striker. Used by [onLoad] and [resetBoard].

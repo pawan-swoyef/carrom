@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../engine/carrom_game.dart';
 import '../game_launch_args.dart';
-import 'strike_controls.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLaunchArgs args;
@@ -35,12 +34,12 @@ class _GameScreenState extends State<GameScreen> {
       backgroundColor: AppColors.woodDark,
       body: Stack(
         children: [
-          // ── Game canvas ──────────────────────────────────────────
+          // ── Game canvas (fills screen; drag input lives inside Flame) ──
           Positioned.fill(
             child: GameWidget(game: _game),
           ),
 
-          // ── Top bar ──────────────────────────────────────────────
+          // ── Top bar ──────────────────────────────────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -64,7 +63,7 @@ class _GameScreenState extends State<GameScreen> {
                     ),
                   ),
                   const Spacer(),
-                  // Reset button (visible in all modes for now)
+                  // Reset button
                   TextButton.icon(
                     icon: const Icon(Icons.refresh_rounded, size: 18),
                     label: const Text('Reset'),
@@ -81,10 +80,20 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
 
-          // ── Strike controls ──────────────────────────────────────
-          Align(
+          // ── Drag hint (bottom-centre, non-interactive) ────────────────
+          const Align(
             alignment: Alignment.bottomCenter,
-            child: StrikeControls(game: _game),
+            child: Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                'Drag the striker to aim',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
           ),
         ],
       ),

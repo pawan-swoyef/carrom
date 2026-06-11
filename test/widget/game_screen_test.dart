@@ -6,7 +6,7 @@ import 'package:carrom_pro/game/ui/game_screen.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('GameScreen mounts and STRIKE control is present', (tester) async {
+  testWidgets('GameScreen mounts without exception', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: GameScreen(
@@ -15,18 +15,21 @@ void main() {
       ),
     );
 
-    // One pump to trigger widget build; don't use pumpAndSettle (game loop).
+    // Two pumps to trigger build; never use pumpAndSettle (game loop runs forever).
     await tester.pump();
     await tester.pump();
 
-    // The screen itself should be present.
+    // The screen itself must be present.
     expect(find.byType(GameScreen), findsOneWidget);
 
-    // The STRIKE button must be visible.
-    expect(find.text('STRIKE'), findsOneWidget);
+    // Old STRIKE button must be gone.
+    expect(find.text('STRIKE'), findsNothing);
+
+    // Drag hint is present.
+    expect(find.text('Drag the striker to aim'), findsOneWidget);
   });
 
-  testWidgets('Reset button calls resetBoard without crashing', (tester) async {
+  testWidgets('Reset button is present and tappable', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: GameScreen(
@@ -37,7 +40,10 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // Tap the reset button — should not throw.
+    // Reset button must exist.
+    expect(find.text('Reset'), findsOneWidget);
+
+    // Tapping it must not throw.
     await tester.tap(find.text('Reset'));
     await tester.pump();
   });
