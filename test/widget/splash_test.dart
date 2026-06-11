@@ -24,14 +24,16 @@ void main() {
   testWidgets('splash shows title then auto-advances to main menu',
       (tester) async {
     await tester.pumpWidget(await _splashApp());
+    await tester.pump(); // start the fade-in
 
     // Initially on the splash, not yet on the menu.
-    expect(find.text('Carrom Pro'), findsOneWidget);
+    expect(find.text('CARROM PRO'), findsOneWidget);
     expect(find.byType(MainMenuScreen), findsNothing);
 
     // After the splash delay it replaces itself with the main menu.
-    await tester.pump(const Duration(milliseconds: 1900));
-    await tester.pumpAndSettle();
+    // (Avoid pumpAndSettle: the loader arc animates forever on the splash.)
+    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
     expect(find.byType(MainMenuScreen), findsOneWidget);
   });
 }
