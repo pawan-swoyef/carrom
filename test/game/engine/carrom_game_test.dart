@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flame/game.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:carrom_pro/game/engine/carrom_game.dart';
+import 'package:carrom_pro/game/engine/striker_phase.dart';
 import 'package:carrom_pro/game/engine/bodies/striker_body.dart';
 import 'package:carrom_pro/game/rules/strike_outcome.dart';
 
@@ -199,6 +200,22 @@ void main() {
 
     expect(fired, 0);
     expect(game.striker.body.linearVelocity.length, closeTo(0, 0.001));
+  });
+
+  testWidgets('phase: placing -> simulating on launch -> placing after settle',
+      (tester) async {
+    final game = await _loaded(tester);
+    expect(game.phase.value, StrikerPhase.placing);
+
+    game.launch(angleRadians: math.pi / 2, power: 0.5);
+    expect(game.phase.value, StrikerPhase.simulating);
+
+    for (var i = 0; i < 1200 && game.phase.value != StrikerPhase.placing; i++) {
+      game.update(1 / 60);
+    }
+    expect(game.phase.value, StrikerPhase.placing);
+    expect(game.striker.body.position.x, closeTo(0, 0.001));
+    expect(game.striker.body.position.y, closeTo(game.geometry.baselineY, 0.001));
   });
 
   testWidgets('onStrike fires on launch; onPocket fires on capture',

@@ -15,6 +15,7 @@ import 'bodies/striker_body.dart';
 import 'bodies/wall_body.dart';
 import 'strike_result.dart';
 import 'striker_drag_input.dart';
+import 'striker_phase.dart';
 
 /// The Forge2D physics world for a carrom board: static rails, four corner
 /// pocket sensors, 19 coins (9 white, 9 black, queen) and the striker. Pocket
@@ -60,6 +61,25 @@ class CarromGame extends Forge2DGame {
   bool interactive = true;
 
   bool _strikeInFlight = false;
+
+  /// The striker's turn FSM phase. Driven by [launch]/[update] and the input
+  /// layer ([beginAiming]/[cancelAiming]).
+  final ValueNotifier<StrikerPhase> phase =
+      ValueNotifier(StrikerPhase.placing);
+
+  void setPhase(StrikerPhase p) {
+    if (phase.value != p) phase.value = p;
+  }
+
+  /// Called by the input layer when the player starts pulling back.
+  void beginAiming() {
+    if (phase.value == StrikerPhase.placing) setPhase(StrikerPhase.aiming);
+  }
+
+  /// Called by the input layer if a pull-back is released inside the dead-zone.
+  void cancelAiming() {
+    if (phase.value == StrikerPhase.aiming) setPhase(StrikerPhase.placing);
+  }
 
   static const _settle = SettleDetector();
 
@@ -121,6 +141,7 @@ class CarromGame extends Forge2DGame {
     _striker!.body.applyLinearImpulse(Vector2(imp.x, imp.y));
     _strikeInFlight = true;
     onStrike?.call();
+    setPhase(StrikerPhase.simulating);
   }
 
   /// Removes all coins and the striker, then rebuilds the opening layout with
@@ -138,6 +159,7 @@ class CarromGame extends Forge2DGame {
     _toCapture.clear();
 
     await _placePieces();
+    setPhase(StrikerPhase.placing);
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -249,6 +271,24 @@ class CarromGame extends Forge2DGame {
     if (_strikeInFlight && isSettled) {
       _strikeInFlight = false;
       onStrikeComplete?.call(takeStrikeResult());
+      _resetStrikerToCentre();
+      setPhase(StrikerPhase.placing);
+    }
+  }
+
+  /// After a strike settles, return the striker to the baseline centre (or spawn
+  /// a fresh one if it was pocketed) for the next turn.
+  void _resetStrikerToCentre() {
+    final s = _striker;
+    if (s == null || s.captured) {
+      s?.removeFromParent();
+      final fresh = StrikerBody(geometry, skin: strikerSkin);
+      _striker = fresh;
+      world.add(fresh);
+    } else {
+      s.body.setTransform(Vector2(0, geometry.baselineY), 0);
+      s.body.linearVelocity = Vector2.zero();
+      s.body.angularVelocity = 0;
     }
   }
 
@@ -273,6 +313,7 @@ class CarromGame extends Forge2DGame {
   @override
   void onRemove() {
     _strikePower.dispose();
+    phase.dispose();
     super.onRemove();
   }
 
