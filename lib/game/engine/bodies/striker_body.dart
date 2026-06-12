@@ -3,20 +3,19 @@ import 'dart:ui';
 import 'package:flame_forge2d/flame_forge2d.dart';
 
 import '../../board/board_geometry.dart';
+import '../../strikers/striker_skin.dart';
 
 /// The dynamic striker. Heavier than coins; starts on the baseline. Its body's
 /// `userData` is set to this component so pocket sensors can identify it.
 class StrikerBody extends BodyComponent {
-  StrikerBody(this.geometry);
+  StrikerBody(this.geometry, {StrikerSkin? skin})
+      : skin = skin ?? skinById(kDefaultStrikerId);
 
   final BoardGeometry geometry;
+  final StrikerSkin skin;
 
   /// Set once the striker has been pocketed; guards against double-capture.
   bool captured = false;
-
-  static const _fillColor = Color(0xFFF5C1A0);   // warm peach/cream
-  static const _ringColor = Color(0xFFD4915A);   // darker ring
-  static const _innerColor = Color(0xFFFBE8D8);  // highlight
 
   @override
   Body createBody() {
@@ -45,19 +44,19 @@ class StrikerBody extends BodyComponent {
     final r = geometry.strikerRadius;
 
     // Outer filled circle.
-    canvas.drawCircle(Offset.zero, r, Paint()..color = _fillColor);
+    canvas.drawCircle(Offset.zero, r, Paint()..color = Color(skin.fill));
 
     // Decorative ring.
     canvas.drawCircle(
       Offset.zero,
       r * 0.75,
       Paint()
-        ..color = _ringColor
+        ..color = Color(skin.ring)
         ..style = PaintingStyle.stroke
         ..strokeWidth = r * 0.15,
     );
 
     // Inner highlight dot.
-    canvas.drawCircle(Offset.zero, r * 0.28, Paint()..color = _innerColor);
+    canvas.drawCircle(Offset.zero, r * 0.28, Paint()..color = Color(skin.accent));
   }
 }

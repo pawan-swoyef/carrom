@@ -8,6 +8,7 @@ import '../profile/profile_controller.dart';
 import '../../theme/app_colors.dart';
 import '../ai/ai_player.dart';
 import '../engine/carrom_game.dart';
+import '../strikers/striker_controller.dart';
 import '../game_launch_args.dart';
 import '../match/ai_turn.dart';
 import '../match/match_session.dart';
@@ -45,7 +46,8 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    _game = CarromGame();
+    _game = CarromGame(
+        strikerSkin: context.read<StrikerController>().equippedSkin);
     _ai = AiPlayer(widget.args.difficulty ?? Difficulty.medium);
     if (widget.args.mode != GameMode.practice) {
       _session = MatchSession(mode: widget.args.mode);

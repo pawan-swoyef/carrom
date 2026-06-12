@@ -3,6 +3,7 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/foundation.dart';
 
 import '../board/board_geometry.dart';
+import '../strikers/striker_skin.dart';
 import '../board/coin_layout.dart';
 import '../board/settle_detector.dart';
 import '../board/strike_math.dart';
@@ -23,7 +24,11 @@ class CarromGame extends Forge2DGame {
   // Portrait layout: the board is ~10 units wide/tall (halfBoard=5).
   // zoom=40 maps 1 physics unit → 40 logical pixels, so the 10-unit board
   // spans 400 pixels — comfortable on a portrait phone.
-  CarromGame() : super(gravity: Vector2.zero(), zoom: 40);
+  CarromGame({StrikerSkin? strikerSkin})
+      : strikerSkin = strikerSkin ?? skinById(kDefaultStrikerId),
+        super(gravity: Vector2.zero(), zoom: 40);
+
+  final StrikerSkin strikerSkin;
 
   final BoardGeometry geometry = const BoardGeometry();
 
@@ -196,7 +201,7 @@ class CarromGame extends Forge2DGame {
       await world.add(coin);
     }
 
-    final s = StrikerBody(geometry);
+    final s = StrikerBody(geometry, skin: strikerSkin);
     _striker = s;
     await world.add(s);
   }

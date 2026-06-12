@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:carrom_pro/services/storage_service.dart';
 import 'package:carrom_pro/settings/settings_controller.dart';
 import 'package:carrom_pro/game/profile/profile_controller.dart';
+import 'package:carrom_pro/game/strikers/striker_controller.dart';
 import 'package:carrom_pro/navigation/home_shell.dart';
 import 'package:carrom_pro/navigation/app_routes.dart';
 import 'package:carrom_pro/game/ui/game_screen.dart';
@@ -13,10 +14,12 @@ import 'package:carrom_pro/game/ui/choose_difficulty_screen.dart';
 Future<Widget> _app() async {
   SharedPreferences.setMockInitialValues({});
   final storage = await StorageService.create();
+  final profile = ProfileController(storage);
   return MultiProvider(
     providers: [
-      ChangeNotifierProvider(create: (_) => SettingsController(storage)),
-      ChangeNotifierProvider(create: (_) => ProfileController(storage)),
+      ChangeNotifierProvider.value(value: SettingsController(storage)),
+      ChangeNotifierProvider.value(value: profile),
+      ChangeNotifierProvider.value(value: StrikerController(storage, profile)),
     ],
     child: MaterialApp(
       onGenerateRoute: AppRoutes.onGenerateRoute,
