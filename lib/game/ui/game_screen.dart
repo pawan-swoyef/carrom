@@ -11,6 +11,7 @@ import '../profile/profile_controller.dart';
 import '../../theme/app_colors.dart';
 import '../ai/ai_player.dart';
 import '../engine/carrom_game.dart';
+import '../engine/striker_phase.dart';
 import '../strikers/striker_controller.dart';
 import '../game_launch_args.dart';
 import '../match/ai_turn.dart';
@@ -119,8 +120,6 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {}); // surfaces the result dialog
       return;
     }
-    // Re-centre the striker on the baseline for the next strike.
-    _game.setStrikerX(0);
     if (session.currentPlayer != before) {
       _showTurnBanner(session.currentPlayer);
     }
@@ -220,6 +219,15 @@ class _GameScreenState extends State<GameScreen> {
               padding: const EdgeInsets.only(right: 10),
               child: _StrikePowerMeter(power: _game.strikePower),
             ),
+          ),
+
+          // ── PLACING positioning slider ────────────────────────────────
+          Positioned(
+            left: 0,
+            // Reserve space on the right for the STRIKE POWER meter (~90 px).
+            right: 90,
+            bottom: 68,
+            child: _PositionSlider(game: _game),
           ),
 
           // ── Controls legend (bottom) ──────────────────────────────────
@@ -434,6 +442,89 @@ class _StrikePowerMeter extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Horizontal slider that lets the player position the striker along the
+/// baseline during the PLACING phase. Disabled (greyed) in other phases so
+/// it cannot interfere with aiming or simulation.
+class _PositionSlider extends StatefulWidget {
+  final CarromGame game;
+  const _PositionSlider({required this.game});
+
+  @override
+  State<_PositionSlider> createState() => _PositionSliderState();
+}
+
+class _PositionSliderState extends State<_PositionSlider> {
+  /// Slider value 0..1; 0.5 = centre of baseline.
+  double _value = 0.5;
+
+  void _onChanged(double v) {
+    setState(() => _value = v);
+    final geo = widget.game.geometry;
+    final x = geo.strikerMinX + (geo.strikerMaxX - geo.strikerMinX) * v;
+    widget.game.setStrikerX(x);
+  }
+
+  /// After each turn CarromGame re-centres the striker; reset the knob to 0.5.
+  void _resetToCenter() => setState(() => _value = 0.5);
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<StrikerPhase>(
+      valueListenable: widget.game.phase,
+      builder: (context, phase, _) {
+        final isPlacing = phase == StrikerPhase.placing;
+
+        // When transitioning back to placing (new turn), snap the knob to 0.5.
+        if (isPlacing && _value != 0.5) {
+          // Schedule after build so setState is safe.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _resetToCenter();
+          });
+        }
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'SLIDE TO POSITION',
+              style: TextStyle(
+                color: isPlacing
+                    ? AppColors.textMuted
+                    : AppColors.textMuted.withValues(alpha: 0.35),
+                fontSize: 10,
+                letterSpacing: 1.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                activeTrackColor:
+                    isPlacing ? AppColors.gold : AppColors.gold.withValues(alpha: 0.25),
+                inactiveTrackColor: Colors.white.withValues(alpha: 0.12),
+                thumbColor:
+                    isPlacing ? AppColors.gold : AppColors.gold.withValues(alpha: 0.25),
+                overlayColor: AppColors.gold.withValues(alpha: 0.2),
+                disabledActiveTrackColor: AppColors.gold.withValues(alpha: 0.25),
+                disabledInactiveTrackColor: Colors.white.withValues(alpha: 0.08),
+                disabledThumbColor: AppColors.gold.withValues(alpha: 0.25),
+              ),
+              child: Slider(
+                value: _value,
+                min: 0,
+                max: 1,
+                onChanged: isPlacing ? _onChanged : null,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
