@@ -1,5 +1,6 @@
 import 'package:flame/components.dart' show Anchor;
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart';
 
 import '../board/board_geometry.dart';
 import '../board/coin_layout.dart';
@@ -45,6 +46,13 @@ class CarromGame extends Forge2DGame {
   // input's callbacks without a separate lookup.
   late final AimLineOverlay _aimLine;
 
+  // Current pull-back power (0..1) while aiming, 0 otherwise. Driven by the
+  // drag input; read by the STRIKE POWER meter via a ValueListenableBuilder.
+  final ValueNotifier<double> _strikePower = ValueNotifier<double>(0);
+
+  /// Live pull-back power in [0, 1] for the strike-power meter. 0 when idle.
+  ValueListenable<double> get strikePower => _strikePower;
+
   // ──────────────────────────────────────────────────────────────────
   // Control API
   // ──────────────────────────────────────────────────────────────────
@@ -74,6 +82,7 @@ class CarromGame extends Forge2DGame {
   void launch({required double angleRadians, required double power}) {
     if (!isSettled) return;
     _result.reset();
+    _strikePower.value = 0;
     _striker!.captured = false;
     // StrikeMath.impulse returns vector_math_64.Vector2; extract x,y to build
     // the forge2d (32-bit) Vector2 that applyLinearImpulse expects.
@@ -93,6 +102,7 @@ class CarromGame extends Forge2DGame {
     _striker?.removeFromParent();
     _striker = null;
     _result.reset();
+    _strikePower.value = 0;
     _toCapture.clear();
 
     await _placePieces();
@@ -133,19 +143,19 @@ class CarromGame extends Forge2DGame {
     // full canvas and receives touch events before world components do.
     await camera.viewport.add(
       StrikerDragInput(
-        onUpdateAim: (fingerWorld, isAiming) {
-          if (fingerWorld == null || !isAiming) {
+        onUpdateAim: (strikerWorld, fireTarget, isAiming) {
+          if (!isAiming || strikerWorld == null || fireTarget == null) {
             _aimLine.setAim(visible: false);
           } else {
-            final sp = _striker?.body.position;
-            if (sp != null) {
-              _aimLine.setAim(
-                visible: true,
-                from: Vector2(sp.x, sp.y),
-                to: fingerWorld,
-              );
-            }
+            _aimLine.setAim(
+              visible: true,
+              from: strikerWorld,
+              to: fireTarget,
+            );
           }
+        },
+        onPower: (power) {
+          _strikePower.value = power;
         },
         onRelease: (angleRadians, power) {
           launch(angleRadians: angleRadians, power: power);
@@ -200,6 +210,12 @@ class CarromGame extends Forge2DGame {
       body.removeFromParent();
     }
     _toCapture.clear();
+  }
+
+  @override
+  void onRemove() {
+    _strikePower.dispose();
+    super.onRemove();
   }
 
   /// Returns and clears the accumulated outcome of the current strike.

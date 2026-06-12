@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -5,6 +6,7 @@ import 'package:flame/events.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:vector_math/vector_math_64.dart' as vm64;
 
+import '../../theme/app_colors.dart';
 import '../board/aim.dart';
 
 /// Transparent full-screen component that intercepts drag gestures and converts
@@ -13,36 +15,48 @@ import '../board/aim.dart';
 /// Added to [camera.viewport] so it lives in screen space. Canvas positions are
 /// converted to world coordinates via [Forge2DGame.screenToWorld].
 ///
-/// Interaction state machine:
+/// PULL-BACK SLINGSHOT interaction (Carrom Pool style):
 ///
 ///   IDLE ──dragStart──► POSITIONING (finger near baseline)
-///                   └──► AIMING    (finger already far from baseline)
-///   POSITIONING ──fingerMovesUp──► AIMING
-///   AIMING ──dragEnd──► IDLE + launch
+///                   └──► AIMING    (finger already into the board)
+///   POSITIONING ──fingerMovesIntoBoard──► AIMING (striker X locks)
+///   AIMING ──dragEnd──► IDLE + launch (fires OPPOSITE the pull)
 ///   POSITIONING ──dragEnd──► IDLE  (no shot; striker stays where moved)
 class StrikerDragInput extends PositionComponent
     with HasGameReference<Forge2DGame>, DragCallbacks {
-  StrikerDragInput({required this.onUpdateAim, required this.onRelease})
-    : super(priority: 10);
+  StrikerDragInput({
+    required this.onUpdateAim,
+    required this.onRelease,
+    required this.onPower,
+  }) : super(priority: 10);
 
-  /// Called every drag-update: [fingerWorld] is null when not dragging.
-  final void Function(Vector2? fingerWorld, bool isAiming) onUpdateAim;
+  /// Called every drag-update while aiming. [strikerWorld] and [fireTarget] are
+  /// world points: draw the aim line from striker toward fireTarget. When not
+  /// aiming, called with [isAiming] = false (hide the line).
+  final void Function(
+    Vector2? strikerWorld,
+    Vector2? fireTarget,
+    bool isAiming,
+  ) onUpdateAim;
 
   /// Called on drag-end if a valid shot was computed.
   final void Function(double angleRadians, double power) onRelease;
+
+  /// Called with the live pull power 0..1 (0 when not aiming).
+  final void Function(double power) onPower;
 
   /// Vertical threshold (world units): finger within this distance of baselineY
   /// is still in positioning mode.
   static const double _positioningBand = 0.6;
 
-  /// Maximum drag distance for full power (world units).
-  /// Tuning point: halfBoard = 5.0. Increase for gentler power curve.
+  /// Maximum pull distance for full power (world units).
+  /// Tuning point: halfBoard = 5.0.
   static const double maxDrag = 5.0;
 
   bool _dragging = false;
   bool _aiming = false;
 
-  // Flame's Vector2 (32-bit) for internal tracking
+  // Flame's Vector2 (32-bit) for internal tracking.
   Vector2 _fingerWorld = Vector2.zero();
   Vector2 _lockedStrikerWorld = Vector2.zero();
 
@@ -74,14 +88,14 @@ class StrikerDragInput extends PositionComponent
     final dy = (_fingerWorld.y - baselineY).abs();
 
     if (dy > _positioningBand) {
-      // Initial touch already far from baseline → aim immediately.
+      // Initial touch already into the board → aim immediately.
       _aiming = true;
       _lockedStrikerWorld = _readStrikerPos(carromGame);
     } else {
       // Near baseline → position the striker.
       carromGame.setStrikerX(_fingerWorld.x);
     }
-    onUpdateAim(_fingerWorld, _aiming);
+    _emit();
   }
 
   @override
@@ -103,7 +117,7 @@ class StrikerDragInput extends PositionComponent
         _lockedStrikerWorld = _readStrikerPos(carromGame);
       }
     }
-    onUpdateAim(_fingerWorld, _aiming);
+    _emit();
   }
 
   @override
@@ -113,38 +127,66 @@ class StrikerDragInput extends PositionComponent
     _dragging = false;
 
     if (_aiming) {
-      // Convert to vm64.Vector2 for aimFromDrag (uses vector_math_64).
-      final strikerV64 = vm64.Vector2(
-        _lockedStrikerWorld.x.toDouble(),
-        _lockedStrikerWorld.y.toDouble(),
-      );
-      final fingerV64 = vm64.Vector2(
-        _fingerWorld.x.toDouble(),
-        _fingerWorld.y.toDouble(),
-      );
-      final aim = aimFromDrag(
-        striker: strikerV64,
-        finger: fingerV64,
-        maxDrag: maxDrag,
-      );
-      if (aim != null) {
+      final aim = _computeAim();
+      // Releasing with zero pull is not a shot.
+      if (aim.power > 0) {
         onRelease(aim.angleRadians, aim.power);
       }
     }
 
-    _aiming = false;
-    onUpdateAim(null, false);
+    _reset();
   }
 
   @override
   void onDragCancel(DragCancelEvent event) {
-    _dragging = false;
-    _aiming = false;
-    onUpdateAim(null, false);
+    _reset();
     super.onDragCancel(event);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
+
+  ShotAim _computeAim() {
+    final striker = vm64.Vector2(
+      _lockedStrikerWorld.x.toDouble(),
+      _lockedStrikerWorld.y.toDouble(),
+    );
+    final finger = vm64.Vector2(
+      _fingerWorld.x.toDouble(),
+      _fingerWorld.y.toDouble(),
+    );
+    return aimFromPullback(
+      strikerPos: striker,
+      fingerPos: finger,
+      maxDrag: maxDrag,
+    );
+  }
+
+  /// Pushes the current state out to the aim-line overlay + power meter.
+  void _emit() {
+    if (!_aiming) {
+      onUpdateAim(null, null, false);
+      onPower(0);
+      return;
+    }
+    final aim = _computeAim();
+    onPower(aim.power);
+
+    // Fire target: a point ahead of the striker along the fire direction.
+    // Length scales with power so the guide reads like the mockup.
+    final length = 2.0 + aim.power * 6.0;
+    final target = Vector2(
+      _lockedStrikerWorld.x + math.cos(aim.angleRadians) * length,
+      _lockedStrikerWorld.y + math.sin(aim.angleRadians) * length,
+    );
+    onUpdateAim(_lockedStrikerWorld.clone(), target, true);
+  }
+
+  void _reset() {
+    _dragging = false;
+    _aiming = false;
+    onUpdateAim(null, null, false);
+    onPower(0);
+  }
 
   /// Returns the game cast as dynamic to avoid a circular dependency on
   /// CarromGame. All accessed members ([isSettled], [geometry], [setStrikerX],
@@ -162,8 +204,9 @@ class StrikerDragInput extends PositionComponent
 // Aim-line overlay
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Renders a gold line + crimson dot from the striker toward the finger while
-/// aiming. Added to [camera.viewfinder] so it renders in world space.
+/// Renders a DOTTED GOLD line from the striker pointing in the FIRE direction
+/// (opposite the pull) while aiming. Added to [camera.viewfinder] so it renders
+/// in world space.
 ///
 /// Call [setAim] to update visibility and endpoints each frame.
 class AimLineOverlay extends Component with HasGameReference<Forge2DGame> {
@@ -171,7 +214,8 @@ class AimLineOverlay extends Component with HasGameReference<Forge2DGame> {
   Vector2 _from = Vector2.zero();
   Vector2 _to = Vector2.zero();
 
-  /// Update the aim-line state. [from] and [to] are in world coordinates.
+  /// Update the aim-line state. [from] (striker) and [to] (fire target) are in
+  /// world coordinates.
   void setAim({required bool visible, Vector2? from, Vector2? to}) {
     _visible = visible;
     if (from != null) _from = from.clone();
@@ -183,37 +227,53 @@ class AimLineOverlay extends Component with HasGameReference<Forge2DGame> {
     if (!_visible) return;
 
     // This component is added to camera.viewfinder. The viewfinder applies
-    // its own transform (zoom + translation) before calling render, so the
-    // canvas coordinate system here is:
-    //   origin = viewfinder.position in world units (board centre)
-    //   scale  = zoom px per world unit
-    //   y-axis = DOWN (canvas convention, opposite to physics world +y up)
-    //
-    // Therefore to draw at world point (wx, wy) we simply use (wx, -wy).
+    // its own transform (zoom + translation) before calling render, so to draw
+    // at world point (wx, wy) relative to viewfinder we use (local.x, -local.y).
     final zoom = game.camera.viewfinder.zoom;
     final vfPos = game.camera.viewfinder.position;
 
-    // World → canvas-local (accounting for camera pan and zoom)
     final fromLocal = (_from - vfPos) * zoom;
     final toLocal = (_to - vfPos) * zoom;
 
     final fromOffset = Offset(fromLocal.x, -fromLocal.y);
     final toOffset = Offset(toLocal.x, -toLocal.y);
 
-    // ─ Aim line ──────────────────────────────────────────────────────────────
-    final linePaint =
-        Paint()
-          ..color = const Color(0xFFFFD700) // gold
-          ..strokeWidth = 3.0
-          ..strokeCap = StrokeCap.round;
+    // ─ Dotted gold guide line ─────────────────────────────────────────────────
+    final paint = Paint()
+      ..color = AppColors.gold
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round;
 
-    canvas.drawLine(fromOffset, toOffset, linePaint);
+    _drawDottedLine(canvas, fromOffset, toOffset, paint, dash: 9, gap: 7);
 
-    // ─ Finger-tip dot ────────────────────────────────────────────────────────
+    // ─ Direction tip ──────────────────────────────────────────────────────────
     canvas.drawCircle(
       toOffset,
-      6.0,
-      Paint()..color = const Color(0xFFDC143C), // crimson
+      5.0,
+      Paint()..color = AppColors.goldBright,
     );
+  }
+
+  /// Draws a dashed line between [a] and [b] using [dash]-px segments separated
+  /// by [gap]-px gaps (both in canvas pixels).
+  void _drawDottedLine(
+    Canvas canvas,
+    Offset a,
+    Offset b,
+    Paint paint, {
+    required double dash,
+    required double gap,
+  }) {
+    final delta = b - a;
+    final total = delta.distance;
+    if (total == 0) return;
+    final dir = delta / total;
+    var drawn = 0.0;
+    while (drawn < total) {
+      final start = a + dir * drawn;
+      final end = a + dir * math.min(drawn + dash, total);
+      canvas.drawLine(start, end, paint);
+      drawn += dash + gap;
+    }
   }
 }

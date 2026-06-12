@@ -10,22 +10,23 @@ class ShotAim {
   const ShotAim(this.angleRadians, this.power);
 }
 
-/// Drag-forward aim: the striker shoots TOWARD [finger]. Power scales with the
-/// drag distance, saturating at [maxDrag]. Returns null if the drag is too
-/// small to be a shot (treated as positioning only).
+/// Pull-back slingshot: the striker fires in the direction OPPOSITE the drag —
+/// i.e. along the vector from [fingerPos] back to [strikerPos]. The further the
+/// finger is pulled away from the striker, the more power, saturating at
+/// [maxDrag]. A zero pull yields zero power (and an arbitrary 0 angle).
 ///
 /// Coordinate convention: world space (+y up). The angle is the standard math
-/// angle (atan2(dy, dx)), so straight up-field is π/2.
-ShotAim? aimFromDrag({
-  required Vector2 striker,
-  required Vector2 finger,
+/// angle (atan2(dy, dx)) of the FIRE vector, so a straight-up shot is π/2.
+ShotAim aimFromPullback({
+  required Vector2 strikerPos,
+  required Vector2 fingerPos,
   required double maxDrag,
-  double minDrag = 0.2,
 }) {
-  final delta = finger - striker;
-  final dist = delta.length;
-  if (dist < minDrag) return null;
+  // Pull vector: finger relative to striker. Fire is the opposite direction.
+  final fire = strikerPos - fingerPos;
+  final dist = fire.length;
+  if (dist == 0) return const ShotAim(0, 0);
   final power = (dist / maxDrag).clamp(0.0, 1.0).toDouble();
-  final angle = math.atan2(delta.y, delta.x);
+  final angle = math.atan2(fire.y, fire.x);
   return ShotAim(angle, power);
 }

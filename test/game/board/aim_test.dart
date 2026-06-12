@@ -6,88 +6,73 @@ import 'package:vector_math/vector_math_64.dart';
 
 void main() {
   const maxDrag = 4.0;
-  const minDrag = 0.2;
 
-  group('aimFromDrag', () {
-    test('finger directly above striker → angle ≈ π/2, power = dist/maxDrag',
+  group('aimFromPullback', () {
+    test('finger pulled straight DOWN below striker → fires straight UP (+π/2)',
         () {
-      final aim = aimFromDrag(
-        striker: Vector2(0, 0),
-        finger: Vector2(0, 2),
+      final aim = aimFromPullback(
+        strikerPos: Vector2(0, 0),
+        fingerPos: Vector2(0, -2), // pull down
         maxDrag: maxDrag,
-        minDrag: minDrag,
       );
-      expect(aim, isNotNull);
-      expect(aim!.angleRadians, closeTo(math.pi / 2, 1e-9));
+      expect(aim.angleRadians, closeTo(math.pi / 2, 1e-9));
       expect(aim.power, closeTo(2.0 / maxDrag, 1e-9)); // 0.5
     });
 
-    test('distance ≥ maxDrag → power clamps to 1.0', () {
-      final aim = aimFromDrag(
-        striker: Vector2(0, 0),
-        finger: Vector2(0, 6), // dist = 6, maxDrag = 4 → would be 1.5, clamped
+    test('finger pulled straight UP → fires straight DOWN (-π/2)', () {
+      final aim = aimFromPullback(
+        strikerPos: Vector2(0, 0),
+        fingerPos: Vector2(0, 2), // pull up
         maxDrag: maxDrag,
-        minDrag: minDrag,
       );
-      expect(aim, isNotNull);
-      expect(aim!.power, closeTo(1.0, 1e-9));
+      expect(aim.angleRadians, closeTo(-math.pi / 2, 1e-9));
     });
 
-    test('distance < minDrag → returns null', () {
-      final aim = aimFromDrag(
-        striker: Vector2(0, 0),
-        finger: Vector2(0, 0.1), // dist = 0.1 < 0.2
+    test('finger pulled down-left → fires up-right', () {
+      final aim = aimFromPullback(
+        strikerPos: Vector2(0, 0),
+        fingerPos: Vector2(-1, -1), // pull down-left
         maxDrag: maxDrag,
-        minDrag: minDrag,
       );
-      expect(aim, isNull);
+      // Fire vector = (1, 1) → angle = π/4.
+      expect(aim.angleRadians, closeTo(math.pi / 4, 1e-9));
     });
 
-    test('finger to the right → angle ≈ 0', () {
-      final aim = aimFromDrag(
-        striker: Vector2(0, 0),
-        finger: Vector2(3, 0),
+    test('pull distance 2 with maxDrag 4 → power 0.5', () {
+      final aim = aimFromPullback(
+        strikerPos: Vector2(0, 0),
+        fingerPos: Vector2(2, 0),
         maxDrag: maxDrag,
-        minDrag: minDrag,
       );
-      expect(aim, isNotNull);
-      expect(aim!.angleRadians, closeTo(0.0, 1e-9));
-      expect(aim.power, closeTo(3.0 / maxDrag, 1e-9)); // 0.75
+      expect(aim.power, closeTo(0.5, 1e-9));
     });
 
-    test('distance exactly equal to minDrag → returns non-null', () {
-      final aim = aimFromDrag(
-        striker: Vector2(0, 0),
-        finger: Vector2(minDrag, 0),
+    test('pull distance 99 → power clamps to 1.0', () {
+      final aim = aimFromPullback(
+        strikerPos: Vector2(0, 0),
+        fingerPos: Vector2(99, 0),
         maxDrag: maxDrag,
-        minDrag: minDrag,
       );
-      // dist == minDrag is NOT < minDrag, so it returns a ShotAim
-      expect(aim, isNotNull);
-      expect(aim!.power, closeTo(minDrag / maxDrag, 1e-9));
+      expect(aim.power, closeTo(1.0, 1e-9));
     });
 
-    test('finger below striker → angle ≈ -π/2', () {
-      final aim = aimFromDrag(
-        striker: Vector2(0, 0),
-        finger: Vector2(0, -2),
+    test('zero pull → power 0', () {
+      final aim = aimFromPullback(
+        strikerPos: Vector2(1, 1),
+        fingerPos: Vector2(1, 1),
         maxDrag: maxDrag,
-        minDrag: minDrag,
       );
-      expect(aim, isNotNull);
-      expect(aim!.angleRadians, closeTo(-math.pi / 2, 1e-9));
+      expect(aim.power, closeTo(0.0, 1e-9));
     });
 
     test('offset striker position works correctly', () {
-      // striker at (1, 1), finger at (1, 3) → delta = (0, 2), angle = π/2
-      final aim = aimFromDrag(
-        striker: Vector2(1, 1),
-        finger: Vector2(1, 3),
+      // striker at (1, 1), finger at (1, -1) → pull down 2 → fires up (+π/2).
+      final aim = aimFromPullback(
+        strikerPos: Vector2(1, 1),
+        fingerPos: Vector2(1, -1),
         maxDrag: maxDrag,
-        minDrag: minDrag,
       );
-      expect(aim, isNotNull);
-      expect(aim!.angleRadians, closeTo(math.pi / 2, 1e-9));
+      expect(aim.angleRadians, closeTo(math.pi / 2, 1e-9));
       expect(aim.power, closeTo(2.0 / maxDrag, 1e-9));
     });
   });
