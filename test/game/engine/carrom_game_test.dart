@@ -4,6 +4,7 @@ import 'package:flame/game.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:carrom_pro/game/engine/carrom_game.dart';
 import 'package:carrom_pro/game/engine/bodies/striker_body.dart';
+import 'package:carrom_pro/game/rules/strike_outcome.dart';
 
 Future<CarromGame> _loaded(WidgetTester tester) async {
   final game = CarromGame();
@@ -161,5 +162,28 @@ void main() {
       game.striker.body.linearVelocity.length,
       lessThanOrEqualTo(CarromGame.maxSpeed + 0.001),
     );
+  });
+
+  testWidgets('onStrikeComplete fires once after a launched strike settles',
+      (tester) async {
+    final game = await _loaded(tester);
+    var fired = 0;
+    StrikeOutcome? got;
+    game.onStrikeComplete = (outcome) {
+      fired++;
+      got = outcome;
+    };
+
+    game.launch(angleRadians: math.pi / 2, power: 0.6);
+    for (var i = 0; i < 1200 && !(fired > 0); i++) {
+      game.update(1 / 60);
+    }
+
+    expect(fired, 1);
+    expect(got, isNotNull);
+    for (var i = 0; i < 120; i++) {
+      game.update(1 / 60);
+    }
+    expect(fired, 1);
   });
 }

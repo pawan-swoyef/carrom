@@ -40,6 +40,14 @@ class CarromGame extends Forge2DGame {
   final StrikeResult _result = StrikeResult();
   final List<BodyComponent> _toCapture = [];
 
+  /// Fires exactly once when the board settles after a [launch].
+  void Function(StrikeOutcome outcome)? onStrikeComplete;
+
+  /// When false, the drag input (setStrikerX / launch) is ignored.
+  bool interactive = true;
+
+  bool _strikeInFlight = false;
+
   static const _settle = SettleDetector();
 
   /// Hard cap on any piece's speed (world units/s). Prevents the fast striker
@@ -74,6 +82,7 @@ class CarromGame extends Forge2DGame {
 
   /// Moves the striker to [x] on the baseline. Only effective when settled.
   void setStrikerX(double x) {
+    if (!interactive) return;
     if (!isSettled) return;
     final clamped = StrikeMath(geometry).clampStrikerX(x);
     // Vector2 here is forge2d's 32-bit version (from flame_forge2d import).
@@ -84,6 +93,7 @@ class CarromGame extends Forge2DGame {
 
   /// Launches the striker. Only effective when settled.
   void launch({required double angleRadians, required double power}) {
+    if (!interactive) return;
     if (!isSettled) return;
     _result.reset();
     _strikePower.value = 0;
@@ -93,6 +103,7 @@ class CarromGame extends Forge2DGame {
     final imp =
         StrikeMath(geometry).impulse(angleRadians: angleRadians, power: power);
     _striker!.body.applyLinearImpulse(Vector2(imp.x, imp.y));
+    _strikeInFlight = true;
   }
 
   /// Removes all coins and the striker, then rebuilds the opening layout with
@@ -209,12 +220,17 @@ class CarromGame extends Forge2DGame {
   void update(double dt) {
     super.update(dt);
     _capSpeeds();
-    if (_toCapture.isEmpty) return;
-    for (final body in _toCapture) {
-      if (body is CoinBody) coins.remove(body);
-      body.removeFromParent();
+    if (_toCapture.isNotEmpty) {
+      for (final body in _toCapture) {
+        if (body is CoinBody) coins.remove(body);
+        body.removeFromParent();
+      }
+      _toCapture.clear();
     }
-    _toCapture.clear();
+    if (_strikeInFlight && isSettled) {
+      _strikeInFlight = false;
+      onStrikeComplete?.call(takeStrikeResult());
+    }
   }
 
   /// Clamps the striker and every coin to [maxSpeed].
