@@ -23,8 +23,8 @@ class StrikerBody extends BodyComponent {
     final shape = CircleShape()..radius = geometry.strikerRadius;
     final fixtureDef = FixtureDef(
       shape,
-      density: 1.6,
-      friction: 0.1,
+      density: 1.6, // heavier than coins (1.0) for proper momentum transfer
+      friction: 0.05,
       restitution: 0.6,
     );
     final bodyDef = BodyDef(
@@ -34,6 +34,9 @@ class StrikerBody extends BodyComponent {
       angularDamping: 1.8,
       userData: this,
     );
+    // Continuous collision detection: the striker can move fast at high power,
+    // so treat it as a "bullet" to stop it tunnelling through the thin walls.
+    bodyDef.bullet = true;
     return world.createBody(bodyDef)..createFixture(fixtureDef);
   }
 

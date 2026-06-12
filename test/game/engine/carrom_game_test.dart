@@ -149,4 +149,17 @@ void main() {
     expect(game.striker, isA<StrikerBody>());
     expect(game.isSettled, isTrue);
   });
+
+  testWidgets('speed is capped at maxSpeed to avoid glitches', (tester) async {
+    final game = await _loaded(tester);
+
+    // Force the striker far above the cap, then step once.
+    game.striker.body.linearVelocity.setValues(200, 0);
+    game.update(1 / 60);
+
+    expect(
+      game.striker.body.linearVelocity.length,
+      lessThanOrEqualTo(CarromGame.maxSpeed + 0.001),
+    );
+  });
 }

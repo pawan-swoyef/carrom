@@ -37,7 +37,7 @@ class CoinBody extends BodyComponent {
     final fixtureDef = FixtureDef(
       shape,
       density: 1.0,
-      friction: 0.1,
+      friction: 0.05,
       restitution: 0.6,
     );
     final bodyDef = BodyDef(

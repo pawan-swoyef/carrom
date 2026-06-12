@@ -42,6 +42,10 @@ class CarromGame extends Forge2DGame {
 
   static const _settle = SettleDetector();
 
+  /// Hard cap on any piece's speed (world units/s). Prevents the fast striker
+  /// from glitching/tunnelling and keeps the simulation stable. Tuning point.
+  static const double maxSpeed = 22.0;
+
   // Aim-line overlay — kept as a field so we can call setAim() from the drag
   // input's callbacks without a separate lookup.
   late final AimLineOverlay _aimLine;
@@ -204,12 +208,31 @@ class CarromGame extends Forge2DGame {
   @override
   void update(double dt) {
     super.update(dt);
+    _capSpeeds();
     if (_toCapture.isEmpty) return;
     for (final body in _toCapture) {
       if (body is CoinBody) coins.remove(body);
       body.removeFromParent();
     }
     _toCapture.clear();
+  }
+
+  /// Clamps the striker and every coin to [maxSpeed].
+  void _capSpeeds() {
+    final s = _striker;
+    if (s != null) _capBody(s.body);
+    for (final coin in coins) {
+      _capBody(coin.body);
+    }
+  }
+
+  void _capBody(Body body) {
+    final v = body.linearVelocity;
+    final speed = v.length;
+    if (speed > maxSpeed) {
+      final k = maxSpeed / speed;
+      body.linearVelocity = Vector2(v.x * k, v.y * k);
+    }
   }
 
   @override

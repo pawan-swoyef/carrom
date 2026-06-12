@@ -10,7 +10,7 @@ class WallBody extends BodyComponent {
   final BoardGeometry geometry;
 
   static const double _thickness = 0.5;
-  static const double _restitution = 0.4;
+  static const double _restitution = 0.6;
   static const double _friction = 0.2;
 
   @override
