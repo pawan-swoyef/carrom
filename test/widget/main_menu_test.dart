@@ -5,16 +5,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:carrom_pro/services/storage_service.dart';
 import 'package:carrom_pro/settings/settings_controller.dart';
 import 'package:carrom_pro/game/profile/profile_controller.dart';
+import 'package:carrom_pro/game/strikers/striker_controller.dart';
 import 'package:carrom_pro/screens/main_menu_screen.dart';
 import 'package:carrom_pro/navigation/home_shell.dart';
 
 Future<Widget> _menuApp() async {
   SharedPreferences.setMockInitialValues({});
   final storage = await StorageService.create();
+  final profile = ProfileController(storage);
   return MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => SettingsController(storage)),
-      ChangeNotifierProvider(create: (_) => ProfileController(storage)),
+      ChangeNotifierProvider.value(value: profile),
+      ChangeNotifierProvider(
+          create: (_) => StrikerController(storage, profile)),
     ],
     child: const MaterialApp(home: MainMenuScreen()),
   );
