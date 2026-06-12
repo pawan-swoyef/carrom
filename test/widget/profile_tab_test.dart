@@ -9,8 +9,8 @@ import 'package:carrom_pro/screens/tabs/profile_tab.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('profile tab shows wins and rank', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2340);
+  testWidgets('records screen shows stats and rank name', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2600);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -20,17 +20,17 @@ void main() {
     final profile = ProfileController(storage);
     await profile.recordMatch(won: true, coinsPocketed: 6);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ChangeNotifierProvider.value(
-          value: profile,
-          child: const Scaffold(body: ProfileTab()),
-        ),
+    await tester.pumpWidget(MaterialApp(
+      home: ChangeNotifierProvider.value(
+        value: profile,
+        child: const Scaffold(body: ProfileTab()),
       ),
-    );
+    ));
     await tester.pump();
 
-    expect(find.textContaining('Wins'), findsOneWidget);
-    expect(find.textContaining('Rank'), findsWidgets);
+    expect(find.text('YOUR RECORDS'), findsOneWidget);
+    expect(find.text('WINS'), findsOneWidget);
+    // Rank name (default 'Rookie' at low xp), shown uppercase.
+    expect(find.text('ROOKIE'), findsOneWidget);
   });
 }
