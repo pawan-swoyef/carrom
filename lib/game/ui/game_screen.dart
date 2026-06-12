@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/audio_service.dart';
 import '../../settings/difficulty.dart';
+import '../../settings/settings_controller.dart';
 import '../profile/profile_controller.dart';
 import '../../theme/app_colors.dart';
 import '../ai/ai_player.dart';
@@ -30,6 +32,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late final CarromGame _game;
+  late final AudioService _audio;
 
   /// The computer opponent (used only in vsComputer mode).
   late final AiPlayer _ai;
@@ -48,6 +51,10 @@ class _GameScreenState extends State<GameScreen> {
     super.initState();
     _game = CarromGame(
         strikerSkin: context.read<StrikerController>().equippedSkin);
+    _audio = AudioService(context.read<SettingsController>());
+    _audio.init();
+    _game.onStrike = _audio.strike;
+    _game.onPocket = _audio.pocket;
     _ai = AiPlayer(widget.args.difficulty ?? Difficulty.medium);
     if (widget.args.mode != GameMode.practice) {
       _session = MatchSession(mode: widget.args.mode);
@@ -103,6 +110,10 @@ class _GameScreenState extends State<GameScreen> {
     session.applyStrike(outcome);
     if (session.isOver) {
       _awardIfNeeded(session);
+      final humanWon = widget.args.mode == GameMode.vsComputer
+          ? session.winner == Player.one
+          : true;
+      humanWon ? _audio.win() : _audio.lose();
       setState(() {}); // surfaces the result dialog
       return;
     }
