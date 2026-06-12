@@ -48,6 +48,12 @@ class CarromGame extends Forge2DGame {
   /// Fires exactly once when the board settles after a [launch].
   void Function(StrikeOutcome outcome)? onStrikeComplete;
 
+  /// Fired when a strike is launched (for SFX).
+  void Function()? onStrike;
+
+  /// Fired when a coin or striker is pocketed (for SFX).
+  void Function()? onPocket;
+
   /// When false, the drag input (setStrikerX / launch) is ignored. Reserved for
   /// Phase 2C-2: the match controller sets this false during the AI's turn so
   /// the human cannot strike while the computer is "thinking"/playing.
@@ -114,6 +120,7 @@ class CarromGame extends Forge2DGame {
         StrikeMath(geometry).impulse(angleRadians: angleRadians, power: power);
     _striker!.body.applyLinearImpulse(Vector2(imp.x, imp.y));
     _strikeInFlight = true;
+    onStrike?.call();
   }
 
   /// Removes all coins and the striker, then rebuilds the opening layout with
@@ -218,11 +225,13 @@ class CarromGame extends Forge2DGame {
       body.captured = true;
       _result.pocketed.add(body.type);
       _toCapture.add(body);
+      onPocket?.call();
     } else if (body is StrikerBody) {
       if (body.captured) return;
       body.captured = true;
       _result.strikerPocketed = true;
       _toCapture.add(body);
+      onPocket?.call();
     }
   }
 

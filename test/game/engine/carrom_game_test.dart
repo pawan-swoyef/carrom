@@ -200,4 +200,23 @@ void main() {
     expect(fired, 0);
     expect(game.striker.body.linearVelocity.length, closeTo(0, 0.001));
   });
+
+  testWidgets('onStrike fires on launch; onPocket fires on capture',
+      (tester) async {
+    final game = await _loaded(tester);
+    var strikes = 0;
+    var pockets = 0;
+    game.onStrike = () => strikes++;
+    game.onPocket = () => pockets++;
+
+    game.launch(angleRadians: math.pi / 2, power: 0.5);
+    expect(strikes, 1);
+
+    final coin = game.coins.first;
+    coin.body.setTransform(game.pockets.first.body.position.clone(), 0);
+    for (var i = 0; i < 10; i++) {
+      game.update(1 / 60);
+    }
+    expect(pockets, greaterThanOrEqualTo(1));
+  });
 }
