@@ -9,7 +9,7 @@ class AudioService {
 
   AudioService(this.settings);
 
-  static const _clips = ['strike.mp3', 'pocket.mp3', 'win.mp3', 'lose.mp3'];
+  static const _clips = ['strike.ogg', 'pocket.ogg', 'win.ogg', 'lose.ogg'];
 
   Future<void> init() async {
     try {
@@ -27,8 +27,8 @@ class AudioService {
     } catch (_) {}
   }
 
-  void strike() => _play('strike.mp3');
-  void pocket() => _play('pocket.mp3');
-  void win() => _play('win.mp3');
-  void lose() => _play('lose.mp3');
+  void strike() => _play('strike.ogg');
+  void pocket() => _play('pocket.ogg');
+  void win() => _play('win.ogg');
+  void lose() => _play('lose.ogg');
 }
