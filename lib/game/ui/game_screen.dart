@@ -5,6 +5,14 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../engine/carrom_game.dart';
 import '../game_launch_args.dart';
+import '../match/match_session.dart';
+import '../rules/coin_type.dart';
+import '../rules/player.dart';
+import '../rules/strike_outcome.dart';
+import 'hud/player_panel.dart';
+import 'hud/queen_status_pill.dart';
+import 'hud/turn_banner.dart';
+import 'result_dialog.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLaunchArgs args;
@@ -17,10 +25,20 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final CarromGame _game;
 
+  /// Live match state for vsComputer / twoPlayer. Null in practice mode.
+  MatchSession? _session;
+
+  /// Transient turn-banner text; null when no banner is showing.
+  String? _banner;
+
   @override
   void initState() {
     super.initState();
     _game = CarromGame();
+    if (widget.args.mode != GameMode.practice) {
+      _session = MatchSession(mode: widget.args.mode);
+      _game.onStrikeComplete = _handleStrikeComplete;
+    }
   }
 
   @override
@@ -29,8 +47,49 @@ class _GameScreenState extends State<GameScreen> {
     super.dispose();
   }
 
+  /// Advances the match by one resolved strike and refreshes the HUD.
+  void _handleStrikeComplete(StrikeOutcome outcome) {
+    final session = _session;
+    if (session == null) return;
+    final before = session.currentPlayer;
+    session.applyStrike(outcome);
+    if (session.isOver) {
+      setState(() {}); // surfaces the result dialog
+      return;
+    }
+    // Re-centre the striker on the baseline for the next strike.
+    _game.setStrikerX(0);
+    if (session.currentPlayer != before) {
+      _showTurnBanner(session.currentPlayer);
+    }
+    setState(() {});
+  }
+
+  void _showTurnBanner(Player p) {
+    final isComputer =
+        widget.args.mode == GameMode.vsComputer && p == Player.two;
+    _banner = isComputer
+        ? "Computer's Turn"
+        : "Player ${p == Player.one ? 1 : 2}'s Turn";
+    setState(() {});
+    Future.delayed(const Duration(milliseconds: 1100), () {
+      if (mounted) setState(() => _banner = null);
+    });
+  }
+
+  void _restartMatch() async {
+    await _game.resetBoard();
+    if (!mounted) return;
+    setState(() {
+      _session = MatchSession(mode: widget.args.mode);
+      _game.onStrikeComplete = _handleStrikeComplete;
+      _banner = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final session = _session;
     return Scaffold(
       backgroundColor: AppColors.woodDark,
       body: Stack(
@@ -38,26 +97,34 @@ class _GameScreenState extends State<GameScreen> {
           // ── Game canvas (fills screen; drag input lives inside Flame) ──
           Positioned.fill(child: GameWidget(game: _game)),
 
-          // ── Top bar: coin balance + reset/pause ──────────────────────
+          // ── Top bar: coin balance / match HUD + reset/pause ──────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: Row(
+              child: Column(
                 children: [
-                  // TODO(Phase 3): bind to real coin balance.
-                  const _CoinPill(coins: 0),
-                  const Spacer(),
-                  _RoundIconButton(
-                    icon: Icons.refresh_rounded,
-                    tooltip: 'Reset',
-                    onPressed: () => _game.resetBoard(),
+                  Row(
+                    children: [
+                      // TODO(Phase 3): bind to real coin balance.
+                      if (session == null) const _CoinPill(coins: 0),
+                      const Spacer(),
+                      _RoundIconButton(
+                        icon: Icons.refresh_rounded,
+                        tooltip: 'Reset',
+                        onPressed: () => _game.resetBoard(),
+                      ),
+                      const SizedBox(width: 10),
+                      _RoundIconButton(
+                        icon: Icons.pause_rounded,
+                        tooltip: 'Pause',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  _RoundIconButton(
-                    icon: Icons.pause_rounded,
-                    tooltip: 'Pause',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
+                  if (session != null) ...[
+                    const SizedBox(height: 8),
+                    _MatchHud(mode: widget.args.mode, session: session),
+                  ],
                 ],
               ),
             ),
@@ -91,8 +158,81 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ),
           ),
+
+          // ── Transient turn banner ─────────────────────────────────────
+          if (_banner != null) TurnBanner(text: _banner!),
+
+          // ── Result dialog (match over) ────────────────────────────────
+          if (session != null && session.isOver) ...[
+            Positioned.fill(
+              child: Container(color: Colors.black.withValues(alpha: 0.65)),
+            ),
+            ResultDialog(
+              won: _resultWon(session),
+              title: _resultTitle(session),
+              onPlayAgain: _restartMatch,
+              onMainMenu: () => Navigator.of(context).maybePop(),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  bool _resultWon(MatchSession session) {
+    // twoPlayer: there is always a winner, so the result is a win to show.
+    // vsComputer: the human (Player.one) must be the winner.
+    if (widget.args.mode == GameMode.vsComputer) {
+      return session.winner == Player.one;
+    }
+    return true;
+  }
+
+  String _resultTitle(MatchSession session) {
+    if (widget.args.mode == GameMode.vsComputer) {
+      return session.winner == Player.one ? 'VICTORY!' : 'DEFEAT';
+    }
+    return 'PLAYER ${session.winner == Player.one ? 1 : 2} WINS';
+  }
+}
+
+/// Top-of-screen match HUD: two player panels flanking the queen-status pill.
+class _MatchHud extends StatelessWidget {
+  final GameMode mode;
+  final MatchSession session;
+  const _MatchHud({required this.mode, required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    final rightIsComputer = mode == GameMode.vsComputer;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        PlayerPanel(
+          name: 'Player 1',
+          isWhite: session.colorOf(Player.one) == CoinType.white,
+          coinsRemaining: session.coinsRemainingFor(Player.one),
+          active: session.currentPlayer == Player.one,
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: QueenStatusPill(status: session.queenStatus),
+              ),
+            ),
+          ),
+        ),
+        PlayerPanel(
+          name: rightIsComputer ? 'Computer' : 'Player 2',
+          isComputer: rightIsComputer,
+          isWhite: session.colorOf(Player.two) == CoinType.white,
+          coinsRemaining: session.coinsRemainingFor(Player.two),
+          active: session.currentPlayer == Player.two,
+        ),
+      ],
     );
   }
 }
