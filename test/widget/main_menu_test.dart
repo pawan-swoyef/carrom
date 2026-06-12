@@ -18,16 +18,27 @@ Future<Widget> _menuApp() async {
   );
 }
 
+/// The menu is a portrait phone layout; size the test surface to match so the
+/// vertical content does not overflow the default 800x600 test window.
+void _portrait(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1080, 2340);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('main menu shows title and PLAY', (tester) async {
+    _portrait(tester);
     await tester.pumpWidget(await _menuApp());
-    expect(find.text('Carrom Pro'), findsOneWidget);
+    expect(find.text('CARROM PRO'), findsOneWidget);
     expect(find.text('PLAY'), findsOneWidget);
   });
 
   testWidgets('tapping PLAY navigates to HomeShell', (tester) async {
+    _portrait(tester);
     await tester.pumpWidget(await _menuApp());
     await tester.tap(find.text('PLAY'));
     await tester.pumpAndSettle();
@@ -36,6 +47,7 @@ void main() {
   });
 
   testWidgets('sound toggle flips icon', (tester) async {
+    _portrait(tester);
     await tester.pumpWidget(await _menuApp());
     expect(find.byIcon(Icons.volume_up), findsOneWidget);
     await tester.tap(find.byIcon(Icons.volume_up));

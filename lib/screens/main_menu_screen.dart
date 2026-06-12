@@ -13,85 +13,190 @@ class MainMenuScreen extends StatelessWidget {
     );
   }
 
+  void _comingSoon(BuildContext context, String what) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('$what — coming soon')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
 
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  iconSize: 30,
-                  color: AppColors.gold,
-                  icon: Icon(settings.settings.soundEffects
-                      ? Icons.volume_up
-                      : Icons.volume_off),
-                  onPressed: () => settings
-                      .setSoundEffects(!settings.settings.soundEffects),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Carrom Pro',
-                style: TextStyle(
-                  fontSize: 44,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.gold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'THE PROFESSIONAL CIRCUIT',
-                style: TextStyle(
-                  color: AppColors.textMuted,
-                  letterSpacing: 3,
-                  fontSize: 12,
-                ),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => _openPlay(context),
-                child: Container(
-                  width: 220,
-                  height: 220,
-                  decoration: BoxDecoration(
-                    color: AppColors.crimson,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.gold, width: 4),
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const _MenuBackground(),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  const SizedBox(height: 8),
+                  Row(
                     children: [
-                      Icon(Icons.play_arrow,
-                          size: 64, color: AppColors.pinkHeading),
-                      Text(
-                        'PLAY',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.pinkHeading,
+                      const Spacer(),
+                      _SoundButton(
+                        on: settings.settings.soundEffects,
+                        onTap: () => settings
+                            .setSoundEffects(!settings.settings.soundEffects),
+                      ),
+                    ],
+                  ),
+                  const _Title(),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'THE PROFESSIONAL CIRCUIT',
+                    style: TextStyle(
+                      color: AppColors.pinkHeading,
+                      letterSpacing: 4,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(flex: 3),
+                  _PlayButton(onTap: () => _openPlay(context)),
+                  const Spacer(flex: 2),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MenuPill(
+                          icon: Icons.menu_book,
+                          label: 'How to Play',
+                          onTap: () => _comingSoon(context, 'How to Play'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _MenuPill(
+                          icon: Icons.bar_chart,
+                          label: 'Stats',
+                          onTap: () => _comingSoon(context, 'Stats'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _MenuPill(
+                          icon: Icons.settings,
+                          label: 'Settings',
+                          onTap: () => _comingSoon(context, 'Settings'),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-              const Spacer(),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  _MenuChip(icon: Icons.menu_book, label: 'How to Play'),
-                  _MenuChip(icon: Icons.bar_chart, label: 'Stats'),
-                  _MenuChip(icon: Icons.settings, label: 'Settings'),
+                  const Spacer(flex: 2),
+                  // Placeholder values until the economy/profile systems (Phase 3)
+                  // are wired in.
+                  const _StatsBar(coins: 0, level: 1),
+                  const SizedBox(height: 12),
+                  const _SponsoredBanner(),
+                  const SizedBox(height: 12),
                 ],
               ),
-              const SizedBox(height: 32),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Title extends StatelessWidget {
+  const _Title();
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (rect) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [AppColors.goldBright, AppColors.gold, Color(0xFFB8923E)],
+      ).createShader(rect),
+      child: const Text(
+        'CARROM PRO',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 40,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 2,
+        ),
+      ),
+    );
+  }
+}
+
+class _SoundButton extends StatelessWidget {
+  final bool on;
+  final VoidCallback onTap;
+  const _SoundButton({required this.on, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkResponse(
+      onTap: onTap,
+      radius: 28,
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.6),
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.crimsonDark),
+        ),
+        child: Icon(on ? Icons.volume_up : Icons.volume_off,
+            color: AppColors.gold, size: 24),
+      ),
+    );
+  }
+}
+
+class _PlayButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _PlayButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 300,
+        height: 300,
+        child: CustomPaint(
+          painter: _RingsPainter(),
+          child: Center(
+            child: Container(
+              width: 210,
+              height: 210,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(
+                  center: Alignment(-0.2, -0.3),
+                  radius: 0.9,
+                  colors: [Color(0xFFB83A52), Color(0xFF8A2138)],
+                ),
+                border: Border.all(color: AppColors.goldBright, width: 3),
+                boxShadow: const [
+                  BoxShadow(
+                      color: Color(0x66000000), blurRadius: 24, spreadRadius: 2),
+                ],
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.play_arrow_rounded, size: 72, color: Colors.white),
+                  Text(
+                    'PLAY',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -99,32 +204,154 @@ class MainMenuScreen extends StatelessWidget {
   }
 }
 
-class _MenuChip extends StatelessWidget {
+class _RingsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final radii = [150.0, 138.0, 124.0];
+    final alphas = [0.10, 0.16, 0.24];
+    for (var i = 0; i < radii.length; i++) {
+      paint.color = AppColors.gold.withValues(alpha: alphas[i]);
+      canvas.drawCircle(c, radii[i], paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MenuPill extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
+  const _MenuPill(
+      {required this.icon, required this.label, required this.onTap});
 
-  const _MenuChip({required this.icon, required this.label});
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.crimsonDark),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: AppColors.gold, size: 18),
+                const SizedBox(width: 6),
+                Text(label,
+                    style: const TextStyle(
+                        color: AppColors.textLight,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsBar extends StatelessWidget {
+  final int coins;
+  final int level;
+  const _StatsBar({required this.coins, required this.level});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 96,
-      height: 84,
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.surface.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.crimsonDark),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.gold),
-          const SizedBox(height: 8),
-          Text(label,
-              textAlign: TextAlign.center,
+          const Icon(Icons.star, color: AppColors.gold, size: 18),
+          const SizedBox(width: 8),
+          Text('$coins COINS',
               style: const TextStyle(
-                  color: AppColors.textLight, fontSize: 12)),
+                  color: AppColors.textLight,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1)),
+          Container(
+            width: 1,
+            height: 18,
+            margin: const EdgeInsets.symmetric(horizontal: 18),
+            color: AppColors.crimsonDark,
+          ),
+          const Icon(Icons.military_tech, color: AppColors.gold, size: 18),
+          const SizedBox(width: 8),
+          Text('LVL $level',
+              style: const TextStyle(
+                  color: AppColors.textLight,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1)),
         ],
+      ),
+    );
+  }
+}
+
+class _SponsoredBanner extends StatelessWidget {
+  const _SponsoredBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: const Column(
+        children: [
+          Text('SPONSORED CIRCUIT',
+              style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 11,
+                  letterSpacing: 2,
+                  fontWeight: FontWeight.w600)),
+          SizedBox(height: 4),
+          Text('WATCH TO UNLOCK EXCLUSIVE STRIKERS',
+              style: TextStyle(
+                  color: AppColors.textMuted, fontSize: 12, letterSpacing: 1)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MenuBackground extends StatelessWidget {
+  const _MenuBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0, -0.8),
+          radius: 1.1,
+          colors: [Color(0xFF2A1518), Color(0xFF120D0A), Color(0xFF0D0908)],
+          stops: [0.0, 0.5, 1.0],
+        ),
       ),
     );
   }
