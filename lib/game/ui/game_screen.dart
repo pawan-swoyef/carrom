@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/ad_service.dart';
 import '../../services/audio_service.dart';
 import '../../settings/difficulty.dart';
 import '../../settings/settings_controller.dart';
@@ -114,6 +115,7 @@ class _GameScreenState extends State<GameScreen> {
           ? session.winner == Player.one
           : true;
       humanWon ? _audio.win() : _audio.lose();
+      AdService.instance.maybeShowInterstitial();
       setState(() {}); // surfaces the result dialog
       return;
     }

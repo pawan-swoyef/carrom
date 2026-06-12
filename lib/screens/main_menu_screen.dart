@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../settings/settings_controller.dart';
 import '../game/profile/profile_controller.dart';
 import '../navigation/home_shell.dart';
+import '../widgets/banner_ad_widget.dart';
 import 'settings_screen.dart';
 import 'how_to_play_screen.dart';
 import 'tabs/profile_tab.dart';
@@ -112,6 +113,7 @@ class MainMenuScreen extends StatelessWidget {
                   _StatsBar(coins: profile.coins, level: profile.level),
                   const SizedBox(height: 12),
                   const _SponsoredBanner(),
+                  const BannerAdWidget(),
                   const SizedBox(height: 12),
                 ],
               ),
