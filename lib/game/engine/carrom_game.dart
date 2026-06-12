@@ -197,14 +197,15 @@ class CarromGame extends Forge2DGame {
     // full canvas and receives touch events before world components do.
     await camera.viewport.add(
       StrikerDragInput(
-        onUpdateAim: (strikerWorld, fireTarget, isAiming) {
-          if (!isAiming || strikerWorld == null || fireTarget == null) {
+        onUpdateAim: (strikerWorld, impact, hitCoin, isAiming) {
+          if (!isAiming || strikerWorld == null || impact == null) {
             _aimLine.setAim(visible: false);
           } else {
             _aimLine.setAim(
               visible: true,
               from: strikerWorld,
-              to: fireTarget,
+              to: impact,
+              hitCoin: hitCoin,
             );
           }
         },
