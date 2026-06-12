@@ -2,9 +2,12 @@ import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../settings/difficulty.dart';
 import '../../theme/app_colors.dart';
+import '../ai/ai_player.dart';
 import '../engine/carrom_game.dart';
 import '../game_launch_args.dart';
+import '../match/ai_turn.dart';
 import '../match/match_session.dart';
 import '../rules/coin_type.dart';
 import '../rules/player.dart';
@@ -25,6 +28,9 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final CarromGame _game;
 
+  /// The computer opponent (used only in vsComputer mode).
+  late final AiPlayer _ai;
+
   /// Live match state for vsComputer / twoPlayer. Null in practice mode.
   MatchSession? _session;
 
@@ -35,10 +41,45 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _game = CarromGame();
+    _ai = AiPlayer(widget.args.difficulty ?? Difficulty.medium);
     if (widget.args.mode != GameMode.practice) {
       _session = MatchSession(mode: widget.args.mode);
       _game.onStrikeComplete = _handleStrikeComplete;
     }
+    if (_session != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRunAi());
+    }
+  }
+
+  /// Evaluates whose turn it is. On the AI's turn, locks human input and, after
+  /// a short "thinking" delay, fires the computer's planned shot. On a human
+  /// turn (or when no session exists), simply unlocks input.
+  void _maybeRunAi() {
+    final session = _session;
+    if (session == null || session.isOver) return;
+    if (!session.turnIsAI) {
+      _game.interactive = true; // human's turn — allow input
+      return;
+    }
+    _game.interactive = false; // lock the human out during the AI turn
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      final s = _session;
+      if (s == null || s.isOver || !s.turnIsAI) {
+        _game.interactive = true;
+        return;
+      }
+      // Flip interactive true only to allow the programmatic AI shot through
+      // the engine's guards, then re-lock until the strike resolves.
+      _game.interactive = true;
+      final fired = runAiTurn(_game, _ai, s.colorOf(s.currentPlayer));
+      _game.interactive = false;
+      if (!fired) {
+        // No shot found → resolve as an empty strike (pass turn).
+        _game.interactive = true;
+        _handleStrikeComplete(const StrikeOutcome());
+      }
+    });
   }
 
   @override
@@ -63,6 +104,13 @@ class _GameScreenState extends State<GameScreen> {
       _showTurnBanner(session.currentPlayer);
     }
     setState(() {});
+    // Hand control on: run the AI for its turn, or unlock the human for theirs.
+    // Covers both continue-turn and pass-turn cases.
+    if (session.turnIsAI) {
+      _maybeRunAi();
+    } else {
+      _game.interactive = true;
+    }
   }
 
   void _showTurnBanner(Player p) {
@@ -84,7 +132,9 @@ class _GameScreenState extends State<GameScreen> {
       _session = MatchSession(mode: widget.args.mode);
       _game.onStrikeComplete = _handleStrikeComplete;
       _banner = null;
+      _game.interactive = true;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRunAi());
   }
 
   @override

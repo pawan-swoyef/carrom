@@ -25,4 +25,25 @@ void main() {
     expect(find.text('Player 2'), findsOneWidget);
     expect(find.text('ON BOARD'), findsOneWidget);
   });
+
+  testWidgets('vsComputer shows the Computer panel', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2340);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: GameScreen(args: GameLaunchArgs(mode: GameMode.vsComputer)),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Computer'), findsOneWidget);
+    expect(find.text('Player 1'), findsOneWidget);
+
+    // Flush the AI "thinking" timer so no pending timer trips the test.
+    await tester.pump(const Duration(seconds: 1));
+  });
 }
