@@ -1,8 +1,10 @@
 import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../settings/difficulty.dart';
+import '../profile/profile_controller.dart';
 import '../../theme/app_colors.dart';
 import '../ai/ai_player.dart';
 import '../engine/carrom_game.dart';
@@ -36,6 +38,9 @@ class _GameScreenState extends State<GameScreen> {
 
   /// Transient turn-banner text; null when no banner is showing.
   String? _banner;
+
+  /// Guards against awarding coins/XP more than once per match.
+  bool _awarded = false;
 
   @override
   void initState() {
@@ -95,6 +100,7 @@ class _GameScreenState extends State<GameScreen> {
     final before = session.currentPlayer;
     session.applyStrike(outcome);
     if (session.isOver) {
+      _awardIfNeeded(session);
       setState(() {}); // surfaces the result dialog
       return;
     }
@@ -111,6 +117,16 @@ class _GameScreenState extends State<GameScreen> {
     } else {
       _game.interactive = true;
     }
+  }
+
+  /// Awards coins/XP for a finished vs-Computer match exactly once.
+  void _awardIfNeeded(MatchSession session) {
+    if (_awarded) return;
+    if (widget.args.mode != GameMode.vsComputer) return;
+    _awarded = true;
+    final won = session.winner == Player.one;
+    final pocketed = (9 - session.coinsRemainingFor(Player.one)).clamp(0, 9);
+    context.read<ProfileController>().recordMatch(won: won, coinsPocketed: pocketed);
   }
 
   void _showTurnBanner(Player p) {
@@ -132,6 +148,7 @@ class _GameScreenState extends State<GameScreen> {
       _session = MatchSession(mode: widget.args.mode);
       _game.onStrikeComplete = _handleStrikeComplete;
       _banner = null;
+      _awarded = false;
       _game.interactive = true;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeRunAi());
@@ -155,8 +172,9 @@ class _GameScreenState extends State<GameScreen> {
                 children: [
                   Row(
                     children: [
-                      // TODO(Phase 3): bind to real coin balance.
-                      if (session == null) const _CoinPill(coins: 0),
+                      if (session == null)
+                        _CoinPill(
+                            coins: context.watch<ProfileController>().profile.coins),
                       const Spacer(),
                       _RoundIconButton(
                         icon: Icons.refresh_rounded,

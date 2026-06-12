@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../settings/settings_controller.dart';
+import '../game/profile/profile_controller.dart';
 import '../navigation/home_shell.dart';
 
 class MainMenuScreen extends StatelessWidget {
@@ -22,6 +23,7 @@ class MainMenuScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsController>();
+    final profile = context.watch<ProfileController>().profile;
 
     return Scaffold(
       body: Stack(
@@ -86,9 +88,7 @@ class MainMenuScreen extends StatelessWidget {
                     ],
                   ),
                   const Spacer(flex: 2),
-                  // Placeholder values until the economy/profile systems (Phase 3)
-                  // are wired in.
-                  const _StatsBar(coins: 0, level: 1),
+                  _StatsBar(coins: profile.coins, level: profile.level),
                   const SizedBox(height: 12),
                   const _SponsoredBanner(),
                   const SizedBox(height: 12),

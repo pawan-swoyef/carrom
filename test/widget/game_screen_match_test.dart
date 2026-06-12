@@ -1,10 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:carrom_pro/services/storage_service.dart';
+import 'package:carrom_pro/settings/settings_controller.dart';
+import 'package:carrom_pro/game/profile/profile_controller.dart';
 import 'package:carrom_pro/game/game_launch_args.dart';
 import 'package:carrom_pro/game/ui/game_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  Future<Widget> app(GameMode mode) async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = await StorageService.create();
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SettingsController(storage)),
+        ChangeNotifierProvider(create: (_) => ProfileController(storage)),
+      ],
+      child: MaterialApp(home: GameScreen(args: GameLaunchArgs(mode: mode))),
+    );
+  }
 
   testWidgets('two-player match shows both player panels and queen pill',
       (tester) async {
@@ -13,11 +30,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: GameScreen(args: GameLaunchArgs(mode: GameMode.twoPlayer)),
-      ),
-    );
+    await tester.pumpWidget(await app(GameMode.twoPlayer));
     await tester.pump();
     await tester.pump();
 
@@ -32,11 +45,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: GameScreen(args: GameLaunchArgs(mode: GameMode.vsComputer)),
-      ),
-    );
+    await tester.pumpWidget(await app(GameMode.vsComputer));
     await tester.pump();
     await tester.pump();
 
