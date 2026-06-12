@@ -186,4 +186,18 @@ void main() {
     }
     expect(fired, 1);
   });
+
+  testWidgets('zero-power launch does not arm a phantom strike', (tester) async {
+    final game = await _loaded(tester);
+    var fired = 0;
+    game.onStrikeComplete = (_) => fired++;
+
+    game.launch(angleRadians: 0, power: 0);
+    for (var i = 0; i < 30; i++) {
+      game.update(1 / 60);
+    }
+
+    expect(fired, 0);
+    expect(game.striker.body.linearVelocity.length, closeTo(0, 0.001));
+  });
 }

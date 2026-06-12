@@ -43,7 +43,9 @@ class CarromGame extends Forge2DGame {
   /// Fires exactly once when the board settles after a [launch].
   void Function(StrikeOutcome outcome)? onStrikeComplete;
 
-  /// When false, the drag input (setStrikerX / launch) is ignored.
+  /// When false, the drag input (setStrikerX / launch) is ignored. Reserved for
+  /// Phase 2C-2: the match controller sets this false during the AI's turn so
+  /// the human cannot strike while the computer is "thinking"/playing.
   bool interactive = true;
 
   bool _strikeInFlight = false;
@@ -95,6 +97,9 @@ class CarromGame extends Forge2DGame {
   void launch({required double angleRadians, required double power}) {
     if (!interactive) return;
     if (!isSettled) return;
+    // A zero-power launch must not arm a strike: it would never move the striker
+    // and would fire a phantom "miss" onStrikeComplete on the next tick.
+    if (power <= 0) return;
     _result.reset();
     _strikePower.value = 0;
     _striker!.captured = false;
