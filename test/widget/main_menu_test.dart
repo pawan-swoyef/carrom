@@ -60,4 +60,12 @@ void main() {
     await tester.pump();
     expect(find.byIcon(Icons.volume_off), findsOneWidget);
   });
+
+  testWidgets('Settings chip opens the Settings screen', (tester) async {
+    _portrait(tester);
+    await tester.pumpWidget(await _menuApp());
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('AUDIO & HAPTICS'), findsOneWidget);
+  });
 }

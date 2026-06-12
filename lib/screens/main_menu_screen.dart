@@ -4,6 +4,9 @@ import '../theme/app_colors.dart';
 import '../settings/settings_controller.dart';
 import '../game/profile/profile_controller.dart';
 import '../navigation/home_shell.dart';
+import 'settings_screen.dart';
+import 'how_to_play_screen.dart';
+import 'tabs/profile_tab.dart';
 
 class MainMenuScreen extends StatelessWidget {
   const MainMenuScreen({super.key});
@@ -14,10 +17,28 @@ class MainMenuScreen extends StatelessWidget {
     );
   }
 
-  void _comingSoon(BuildContext context, String what) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$what — coming soon')));
+  void _openHowToPlay(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const HowToPlayScreen()),
+    );
+  }
+
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+    );
+  }
+
+  void _openStats(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Stats')),
+          backgroundColor: AppColors.woodDark,
+          body: const ProfileTab(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -66,7 +87,7 @@ class MainMenuScreen extends StatelessWidget {
                         child: _MenuPill(
                           icon: Icons.menu_book,
                           label: 'How to Play',
-                          onTap: () => _comingSoon(context, 'How to Play'),
+                          onTap: () => _openHowToPlay(context),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -74,7 +95,7 @@ class MainMenuScreen extends StatelessWidget {
                         child: _MenuPill(
                           icon: Icons.bar_chart,
                           label: 'Stats',
-                          onTap: () => _comingSoon(context, 'Stats'),
+                          onTap: () => _openStats(context),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -82,7 +103,7 @@ class MainMenuScreen extends StatelessWidget {
                         child: _MenuPill(
                           icon: Icons.settings,
                           label: 'Settings',
-                          onTap: () => _comingSoon(context, 'Settings'),
+                          onTap: () => _openSettings(context),
                         ),
                       ),
                     ],
