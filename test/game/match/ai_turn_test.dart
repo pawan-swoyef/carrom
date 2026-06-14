@@ -9,8 +9,9 @@ import 'package:carrom_pro/settings/difficulty.dart';
 Future<CarromGame> _loaded(WidgetTester tester) async {
   final game = CarromGame();
   await tester.pumpWidget(GameWidget(game: game));
-  await tester.pump();
-  await tester.pump();
+  for (var i = 0; i < 60 && game.coins.length < 19; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
   return game;
 }
 

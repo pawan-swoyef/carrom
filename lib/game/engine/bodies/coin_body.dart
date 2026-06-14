@@ -12,11 +12,16 @@ class CoinBody extends BodyComponent {
     required this.geometry,
     required this.type,
     required this.startPosition,
+    this.spriteOf,
   });
 
   final BoardGeometry geometry;
   final CoinType type;
   final Vector2 startPosition;
+
+  /// Resolves the current top-down art for this coin (may be null until the
+  /// image finishes loading). Falls back to a drawn disc when null.
+  final Image? Function()? spriteOf;
 
   /// Set once this coin has been pocketed; guards against double-capture.
   bool captured = false;
@@ -53,6 +58,30 @@ class CoinBody extends BodyComponent {
   @override
   void render(Canvas canvas) {
     final r = geometry.coinRadius;
+
+    // Sprite art (top-down goti) if available.
+    final s = spriteOf?.call();
+    if (s != null) {
+      final width = 2 * r * 1.2;
+      final height = width * (s.height / s.width);
+      final dst = Rect.fromCenter(
+        center: Offset.zero,
+        width: width,
+        height: height,
+      );
+      final src =
+          Rect.fromLTWH(0, 0, s.width.toDouble(), s.height.toDouble());
+      canvas.drawImageRect(
+        s,
+        src,
+        dst,
+        Paint()
+          ..isAntiAlias = true
+          ..filterQuality = FilterQuality.medium,
+      );
+      return;
+    }
+
     final fillColor = switch (type) {
       CoinType.white => _colorWhite,
       CoinType.black => _colorBlack,

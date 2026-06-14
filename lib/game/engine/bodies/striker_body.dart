@@ -8,11 +8,15 @@ import '../../strikers/striker_skin.dart';
 /// The dynamic striker. Heavier than coins; starts on the baseline. Its body's
 /// `userData` is set to this component so pocket sensors can identify it.
 class StrikerBody extends BodyComponent {
-  StrikerBody(this.geometry, {StrikerSkin? skin})
+  StrikerBody(this.geometry, {StrikerSkin? skin, this.spriteOf})
       : skin = skin ?? skinById(kDefaultStrikerId);
 
   final BoardGeometry geometry;
   final StrikerSkin skin;
+
+  /// Resolves the current top-down striker art (null until loaded). Falls back
+  /// to the drawn disc when null.
+  final Image? Function()? spriteOf;
 
   /// Set once the striker has been pocketed; guards against double-capture.
   bool captured = false;
@@ -42,6 +46,24 @@ class StrikerBody extends BodyComponent {
   @override
   void render(Canvas canvas) {
     final r = geometry.strikerRadius;
+
+    final s = spriteOf?.call();
+    if (s != null) {
+      final width = 2 * r * 1.2;
+      final height = width * (s.height / s.width);
+      final dst =
+          Rect.fromCenter(center: Offset.zero, width: width, height: height);
+      final src = Rect.fromLTWH(0, 0, s.width.toDouble(), s.height.toDouble());
+      canvas.drawImageRect(
+        s,
+        src,
+        dst,
+        Paint()
+          ..isAntiAlias = true
+          ..filterQuality = FilterQuality.medium,
+      );
+      return;
+    }
 
     // Outer filled circle.
     canvas.drawCircle(Offset.zero, r, Paint()..color = Color(skin.fill));

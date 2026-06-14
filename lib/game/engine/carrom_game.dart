@@ -1,6 +1,10 @@
+import 'dart:ui' as ui;
+
 import 'package:flame/components.dart' show Anchor;
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/foundation.dart';
+
+import '../rules/coin_type.dart';
 
 import '../board/board_geometry.dart';
 import '../strikers/striker_skin.dart';
@@ -32,6 +36,35 @@ class CarromGame extends Forge2DGame {
   final StrikerSkin strikerSkin;
 
   final BoardGeometry geometry = const BoardGeometry();
+
+  // Top-down piece art. Null until loaded (or if loading fails) → bodies fall
+  // back to drawn discs.
+  ui.Image? _imgWhite;
+  ui.Image? _imgBlack;
+  ui.Image? _imgQueen;
+  ui.Image? _imgStriker;
+
+  ui.Image? _coinSprite(CoinType type) => switch (type) {
+        CoinType.white => _imgWhite,
+        CoinType.black => _imgBlack,
+        CoinType.queen => _imgQueen,
+      };
+
+  Future<ui.Image?> _tryLoadImage(String name) async {
+    try {
+      return await images.load(name);
+    } catch (_) {
+      return null; // asset missing / unavailable (e.g. unit tests)
+    }
+  }
+
+  /// Fire-and-forget load of the piece art; sets the fields when ready.
+  Future<void> _loadImages() async {
+    _imgWhite = await _tryLoadImage('white.png');
+    _imgBlack = await _tryLoadImage('black.png');
+    _imgQueen = await _tryLoadImage('queen.png');
+    _imgStriker = await _tryLoadImage('striker.png');
+  }
 
   final List<CoinBody> coins = [];
   final List<PocketBody> pockets = [];
@@ -174,6 +207,12 @@ class CarromGame extends Forge2DGame {
     camera.viewfinder.position = Vector2.zero();
     camera.viewfinder.anchor = Anchor.center;
 
+    // Top-down piece art (transparent PNGs), loaded WITHOUT blocking onLoad:
+    // image decoding can't complete under the flutter_test fake clock, so
+    // awaiting it here would deadlock. Bodies read the sprite via a resolver,
+    // so they pick it up once it finishes decoding on a real device.
+    _loadImages();
+
     await world.add(BoardBackground(geometry));
     await world.add(WallBody(geometry));
 
@@ -226,12 +265,13 @@ class CarromGame extends Forge2DGame {
         geometry: geometry,
         type: placement.type,
         startPosition: Vector2(placement.position.x, placement.position.y),
+        spriteOf: () => _coinSprite(placement.type),
       );
       coins.add(coin);
       await world.add(coin);
     }
 
-    final s = StrikerBody(geometry, skin: strikerSkin);
+    final s = StrikerBody(geometry, skin: strikerSkin, spriteOf: () => _imgStriker);
     _striker = s;
     await world.add(s);
   }
@@ -283,7 +323,8 @@ class CarromGame extends Forge2DGame {
     final s = _striker;
     if (s == null || s.captured) {
       s?.removeFromParent();
-      final fresh = StrikerBody(geometry, skin: strikerSkin);
+      final fresh =
+          StrikerBody(geometry, skin: strikerSkin, spriteOf: () => _imgStriker);
       _striker = fresh;
       world.add(fresh);
     } else {
